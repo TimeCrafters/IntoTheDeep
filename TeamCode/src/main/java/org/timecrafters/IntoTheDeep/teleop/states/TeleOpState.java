@@ -1,21 +1,23 @@
-package org.timecrafters.scratchpad;
+package org.timecrafters.IntoTheDeep.teleop.states;
 
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
-import com.qualcomm.robotcore.eventloop.opmode.OpMode;
-import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 
-public class ROBOT extends OpMode {
+import dev.cyberarm.engine.V2.CyberarmState;
+
+public class TeleOpState extends CyberarmState {
     Servo servo;
     CRServo left, right;
     DcMotor motor, frontLeft, frontRight, backLeft, backRight, extension;
     IMU imu;
+    boolean fieldcentrictoggle = false;
 
     @Override
     public void init() {
@@ -23,11 +25,11 @@ public class ROBOT extends OpMode {
 //        right = hardwareMap.crservo.get("right");
 //        left = hardwareMap.crservo.get("left");
 //        motor = hardwareMap.dcMotor.get("motor");
-        frontLeft = hardwareMap.dcMotor.get("frontLeft");
-        frontRight = hardwareMap.dcMotor.get("frontRight");
-        backLeft = hardwareMap.dcMotor.get("backLeft");
-        backRight = hardwareMap.dcMotor.get("backRight");
-        extension = hardwareMap.dcMotor.get("extension");
+        frontLeft = engine.hardwareMap.dcMotor.get("frontLeft");
+        frontRight = engine.hardwareMap.dcMotor.get("frontRight");
+        backLeft = engine.hardwareMap.dcMotor.get("backLeft");
+        backRight = engine.hardwareMap.dcMotor.get("backRight");
+        extension = engine.hardwareMap.dcMotor.get("extension");
 
         frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
@@ -35,7 +37,7 @@ public class ROBOT extends OpMode {
 //        servo.setPosition(.8);
 
         // Retrieve the IMU from the hardware map
-        imu = hardwareMap.get(IMU.class, "imu");
+        imu = engine.hardwareMap.get(IMU.class, "imu");
         // Adjust the orientation parameters to match your robot
         IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
                 RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
@@ -45,8 +47,8 @@ public class ROBOT extends OpMode {
     }
 
     @Override
-    public void loop() {
-//        if (gamepad1.y) {
+    public void exec() {
+        //        if (gamepad1.y) {
 //            right.setPower(1);
 //            left.setPower(-1);
 //        } else if (gamepad1.a) {
@@ -58,18 +60,18 @@ public class ROBOT extends OpMode {
 //        }
 //
 //        motor.setPower(gamepad1.left_stick_y);
-        extension.setPower(gamepad1.right_stick_y *1);
+        extension.setPower(engine.gamepad1.right_stick_y *1);
 
-        frontLeft.setPower(gamepad2.left_stick_y);
-        frontRight.setPower(gamepad2.right_stick_y);
-        backLeft.setPower(gamepad2.left_stick_y);
-        backRight.setPower(gamepad2.right_stick_y);
+        frontLeft.setPower(engine.gamepad2.left_stick_y);
+        frontRight.setPower(engine.gamepad2.right_stick_y);
+        backLeft.setPower(engine.gamepad2.left_stick_y);
+        backRight.setPower(engine.gamepad2.right_stick_y);
 
-        double y = -gamepad2.left_stick_y; // Remember, Y stick value is reversed
-        double x = gamepad2.left_stick_x * 1.1; // Counteract imperfect strafing
-        double rx = -gamepad2.right_stick_x;
+        double y = -engine.gamepad2.left_stick_y; // Remember, Y stick value is reversed
+        double x = engine.gamepad2.left_stick_x * 1.1; // Counteract imperfect strafing
+        double rx = -engine.gamepad2.right_stick_x;
 
-        double botHeading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        double botHeading = fieldcentrictoggle ? 0 : imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
 
         // Rotate the movement direction counter to the bot's rotation
         double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
@@ -90,10 +92,27 @@ public class ROBOT extends OpMode {
         backLeft.setPower(backLeftPower);
         frontRight.setPower(frontRightPower);
         backRight.setPower(backRightPower);
+    }
 
+    @Override
+    public void buttonDown(Gamepad gamepad, String button) {
+        if (engine.gamepad2 == gamepad) {
+            switch (button) {
+                case "guide": {
+                    imu.resetYaw();
+                    break;
+                }
+                case "start": {
+                    fieldcentrictoggle = !fieldcentrictoggle;
+                    break;
+                }
+            }
+        }
+    }
 
-        telemetry.addData("motor position", motor.getCurrentPosition());
-
-
+    @Override
+    public void telemetry() {
+        engine.telemetry.addData("extension", extension.getCurrentPosition());
+        engine.telemetry.addData("fieldcentrictoggle", fieldcentrictoggle);
     }
 }
