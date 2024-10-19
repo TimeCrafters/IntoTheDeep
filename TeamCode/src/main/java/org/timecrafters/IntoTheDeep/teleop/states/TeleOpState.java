@@ -15,9 +15,9 @@ import dev.cyberarm.engine.V2.CyberarmState;
 public class TeleOpState extends CyberarmState {
     Servo servo;
     CRServo left, right;
-    DcMotor motor, frontLeft, frontRight, backLeft, backRight, extension;
+    DcMotor motor, frontLeft, frontRight, backLeft, backRight, extension, leftLift, rightLift;
     IMU imu;
-    boolean fieldcentrictoggle = false;
+    boolean fieldcentrictoggle = true;
 
     @Override
     public void init() {
@@ -30,9 +30,13 @@ public class TeleOpState extends CyberarmState {
         backLeft = engine.hardwareMap.dcMotor.get("backLeft");
         backRight = engine.hardwareMap.dcMotor.get("backRight");
         extension = engine.hardwareMap.dcMotor.get("extension");
+        leftLift = engine.hardwareMap.dcMotor.get ("leftLift");
+        rightLift = engine.hardwareMap.dcMotor.get ("rightLift");
 
         frontLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        frontRight.setDirection(DcMotorSimple.Direction.FORWARD);
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
+        backRight.setDirection(DcMotorSimple.Direction.FORWARD);
 
 //        servo.setPosition(.8);
 
@@ -60,38 +64,43 @@ public class TeleOpState extends CyberarmState {
 //        }
 //
 //        motor.setPower(gamepad1.left_stick_y);
-        extension.setPower(engine.gamepad1.right_stick_y *1);
 
-        frontLeft.setPower(engine.gamepad2.left_stick_y);
-        frontRight.setPower(engine.gamepad2.right_stick_y);
-        backLeft.setPower(engine.gamepad2.left_stick_y);
-        backRight.setPower(engine.gamepad2.right_stick_y);
+        extension.setPower(-engine.gamepad1.right_stick_y *1);
+        leftLift.setPower(engine.gamepad1.left_stick_y *1);
+        rightLift.setPower(engine.gamepad1.left_stick_y *1);
 
-        double y = -engine.gamepad2.left_stick_y; // Remember, Y stick value is reversed
-        double x = engine.gamepad2.left_stick_x * 1.1; // Counteract imperfect strafing
-        double rx = -engine.gamepad2.right_stick_x;
+        // Tank Drive
+        frontLeft.setPower(-engine.gamepad2.left_stick_y);
+        frontRight.setPower(-engine.gamepad2.right_stick_y);
+        backLeft.setPower(-engine.gamepad2.left_stick_y);
+        backRight.setPower(-engine.gamepad2.right_stick_y);
 
-        double botHeading = fieldcentrictoggle ? 0 : imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-
-        // Rotate the movement direction counter to the bot's rotation
-        double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
-        double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
-
-        rotX = rotX * 1.1;  // Counteract imperfect strafing
-
-        // Denominator is the largest motor power (absolute value) or 1
-        // This ensures all the powers maintain the same ratio,
-        // but only if at least one is out of the range [-1, 1]
-        double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
-        double frontLeftPower = (rotY + rotX + rx) / denominator;
-        double backLeftPower = (rotY - rotX + rx) / denominator;
-        double frontRightPower = (rotY - rotX - rx) / denominator;
-        double backRightPower = (rotY + rotX - rx) / denominator;
-
-        frontLeft.setPower(frontLeftPower);
-        backLeft.setPower(backLeftPower);
-        frontRight.setPower(frontRightPower);
-        backRight.setPower(backRightPower);
+        // Fancy Drive
+//        double y = -engine.gamepad2.left_stick_y; // Remember, Y stick value is reversed
+//        double x = engine.gamepad2.left_stick_x * 1.1; // Counteract imperfect strafing
+//        double rx = -engine.gamepad2.right_stick_x;
+//
+//        double botHeading = fieldcentrictoggle ? 1.57 : imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+//
+//        // Rotate the movement direction counter to the bot's rotation
+//        double rotX = x * Math.cos(-botHeading) - y * Math.sin(-botHeading);
+//        double rotY = x * Math.sin(-botHeading) + y * Math.cos(-botHeading);
+//
+//        rotX = rotX * 1.1;  // Counteract imperfect strafing
+//
+//        // Denominator is the largest motor power (absolute value) or 1
+//        // This ensures all the powers maintain the same ratio,
+//        // but only if at least one is out of the range [-1, 1]
+//        double denominator = Math.max(Math.abs(rotY) + Math.abs(rotX) + Math.abs(rx), 1);
+//        double frontLeftPower = (rotY + rotX + rx) / denominator;
+//        double backLeftPower = (rotY - rotX + rx) / denominator;
+//        double frontRightPower = (rotY - rotX - rx) / denominator;
+//        double backRightPower = (rotY + rotX - rx) / denominator;
+//
+//        frontLeft.setPower(frontLeftPower);
+//        backLeft.setPower(backLeftPower);
+//        frontRight.setPower(frontRightPower);
+//        backRight.setPower(backRightPower);
     }
 
     @Override
@@ -113,6 +122,7 @@ public class TeleOpState extends CyberarmState {
     @Override
     public void telemetry() {
         engine.telemetry.addData("extension", extension.getCurrentPosition());
+        engine.telemetry.addData("IMU",imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
         engine.telemetry.addData("fieldcentrictoggle", fieldcentrictoggle);
     }
 }
