@@ -25,10 +25,10 @@ public class TeleOpState extends CyberarmState {
 //        right = hardwareMap.crservo.get("right");
 //        left = hardwareMap.crservo.get("left");
 //        motor = hardwareMap.dcMotor.get("motor");
-        frontLeft = engine.hardwareMap.dcMotor.get("frontLeft");
-        frontRight = engine.hardwareMap.dcMotor.get("frontRight");
-        backLeft = engine.hardwareMap.dcMotor.get("backLeft");
-        backRight = engine.hardwareMap.dcMotor.get("backRight");
+        frontLeft = engine.hardwareMap.dcMotor.get("fl");
+        frontRight = engine.hardwareMap.dcMotor.get("fr");
+        backLeft = engine.hardwareMap.dcMotor.get("bl");
+        backRight = engine.hardwareMap.dcMotor.get("br");
         extension = engine.hardwareMap.dcMotor.get("extension");
         leftLift = engine.hardwareMap.dcMotor.get ("leftLift");
         rightLift = engine.hardwareMap.dcMotor.get ("rightLift");
@@ -37,6 +37,9 @@ public class TeleOpState extends CyberarmState {
         frontRight.setDirection(DcMotorSimple.Direction.FORWARD);
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight.setDirection(DcMotorSimple.Direction.FORWARD);
+
+        leftLift.setDirection(DcMotorSimple.Direction.REVERSE);
+
 
 //        servo.setPosition(.8);
 
