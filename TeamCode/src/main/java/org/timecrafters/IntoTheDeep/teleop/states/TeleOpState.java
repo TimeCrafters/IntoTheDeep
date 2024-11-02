@@ -19,6 +19,10 @@ public class TeleOpState extends CyberarmState {
     IMU imu;
     boolean fieldcentrictoggle = true;
 
+
+    int liftLimit = 1500, extensionLimit = 1000;
+    int extensionTargetPos = 0, liftTargetPos = 0;
+
     @Override
     public void init() {
 //        servo = hardwareMap.servo.get("servo");
@@ -38,8 +42,16 @@ public class TeleOpState extends CyberarmState {
         backLeft.setDirection(DcMotorSimple.Direction.REVERSE);
         backRight.setDirection(DcMotorSimple.Direction.FORWARD);
 
-        leftLift.setDirection(DcMotorSimple.Direction.REVERSE);
+        leftLift.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightLift.setDirection(DcMotorSimple.Direction.REVERSE);
 
+        leftLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        rightLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        extension.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+
+        leftLift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        rightLift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+        extension.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
 //        servo.setPosition(.8);
 
@@ -68,9 +80,48 @@ public class TeleOpState extends CyberarmState {
 //
 //        motor.setPower(gamepad1.left_stick_y);
 
-        extension.setPower(-engine.gamepad1.right_stick_y *1);
-        leftLift.setPower(engine.gamepad1.left_stick_y *1);
-        rightLift.setPower(engine.gamepad1.left_stick_y *1);
+        // EXTENSION
+        if (-engine.gamepad1.right_stick_y < 0 && extension.getCurrentPosition() >= 0)
+        {
+            extension.setPower(-engine.gamepad1.right_stick_y * 1);
+            extension.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            extensionTargetPos = extension.getCurrentPosition();
+
+        } else if (-engine.gamepad1.right_stick_y > 0 && extension.getCurrentPosition() <= extensionLimit) {
+            extension.setPower(-engine.gamepad1.right_stick_y * 1);
+            extension.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            extensionTargetPos = extension.getCurrentPosition();
+
+        } else {
+            extension.setPower(0.5);
+            extension.setTargetPosition(extensionTargetPos);
+            extension.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        }
+
+        // LIFT
+        if (-engine.gamepad1.left_stick_y < 0 && leftLift.getCurrentPosition() >= 0)
+        {
+            leftLift.setPower(-engine.gamepad1.left_stick_y *1);
+            rightLift.setPower(-engine.gamepad1.left_stick_y *1);
+            leftLift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            rightLift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            liftTargetPos = leftLift.getCurrentPosition();
+
+        } else if (-engine.gamepad1.left_stick_y > 0 && leftLift.getCurrentPosition() <= liftLimit) {
+            leftLift.setPower(-engine.gamepad1.left_stick_y *1);
+            rightLift.setPower(-engine.gamepad1.left_stick_y *1);
+            leftLift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            rightLift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+            liftTargetPos = leftLift.getCurrentPosition();
+
+        } else {
+            leftLift.setPower(0.5);
+            rightLift.setPower(0.5);
+            leftLift.setTargetPosition(liftTargetPos);
+            rightLift.setTargetPosition(liftTargetPos);
+            leftLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            rightLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+        }
 
         // Tank Drive
         frontLeft.setPower(-engine.gamepad2.left_stick_y);
@@ -125,6 +176,10 @@ public class TeleOpState extends CyberarmState {
     @Override
     public void telemetry() {
         engine.telemetry.addData("extension", extension.getCurrentPosition());
+        engine.telemetry.addData("leftLift", leftLift.getCurrentPosition());
+        engine.telemetry.addData("rightLift", rightLift.getCurrentPosition());
+        engine.telemetry.addData("extensionTargetPos", extensionTargetPos);
+        engine.telemetry.addData("liftTargetPos", liftTargetPos);
         engine.telemetry.addData("IMU",imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS));
         engine.telemetry.addData("fieldcentrictoggle", fieldcentrictoggle);
     }
