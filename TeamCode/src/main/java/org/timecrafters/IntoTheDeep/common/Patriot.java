@@ -25,12 +25,24 @@ public class Patriot implements Robot {
     public Servo depoClaw, depoLeft, depoRight, intakeClaw;
     public final int RIGHT_DIFFY = 1;
     public final int LEFT_DIFFY  = 0;
+    public double leftDiffyPower;
+    public double rightDiffyPower;
 
     // Declare the OctoQuad object and members to store encoder positions and velocities
     public OctoQuad octoquad;
     public int posLeftDiffy;
     public int posRightDiffy;
     public IMU imu;
+
+    // ---------------------------------------------------------------------------------------------------- Mechanical positions and limits
+    public double depoPivotPos = 0.2;
+    public double IntakeCLOSE = 1;
+    public double DepoCLOSE = 1;
+    public double IntakeOPEN = 0.4;
+    public double DepoOPEN = 0.7;
+    public int intakeOrigin = 0;
+    public int intakeExposed = 5100;
+    public double tolerance = 300;
 
     public Patriot(String string) {
         this.engine = engine;
@@ -94,8 +106,8 @@ public class Patriot implements Robot {
         // CR SERVO'S
         leftDiff = engine.hardwareMap.crservo.get("leftDiff");
         rightDiff = engine.hardwareMap.crservo.get("rightDiff");
-        leftDiff.setDirection(DcMotorSimple.Direction.REVERSE);
-        rightDiff.setDirection(DcMotorSimple.Direction.FORWARD);
+        leftDiff.setDirection(DcMotorSimple.Direction.FORWARD);
+        rightDiff.setDirection(DcMotorSimple.Direction.REVERSE);
     }
 
     public void readOctoQuad(){
