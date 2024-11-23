@@ -14,8 +14,8 @@ public class StartTACNETService extends OpMode {
     @Override
     public void init() {
         Context appContext = hardwareMap.appContext;
-        Intent tacnetIntent = new Intent("org.timecrafters.TimeCraftersConfigurationTool.tacnet.ACTION_START_SERVER");
-        tacnetIntent.setPackage("org.timecrafters.TimeCraftersConfigurationTool");
+        Intent tacnetIntent = new Intent("org.timecrafters.TimeCraftersConfigurationTool.library.tacnet.ACTION_START_SERVER");
+//        tacnetIntent.setPackage("org.timecrafters.TimeCraftersConfigurationTool");
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             appContext.startForegroundService(tacnetIntent);
