@@ -14,7 +14,7 @@ public class HaltTACNETService extends OpMode {
     public void init() {
         Context appContext = hardwareMap.appContext;
         Intent tacnetIntent = new Intent("org.timecrafters.TimeCraftersConfigurationTool.library.tacnet.ACTION_START_SERVER");
-//        tacnetIntent.setPackage("org.timecrafters.TimeCraftersConfigurationTool");
+        tacnetIntent.setPackage("org.timecrafters.TimeCraftersConfigurationTool");
 
         appContext.stopService(tacnetIntent);
     }
