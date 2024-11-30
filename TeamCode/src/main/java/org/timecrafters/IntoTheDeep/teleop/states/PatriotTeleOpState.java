@@ -26,6 +26,9 @@ public class PatriotTeleOpState extends CyberarmState {
 
     public int leftDifTarget = 0;
     public int rightDifTarget = 0;
+    public double maxExtendoVelo = 0;
+
+
 
 
     public PatriotTeleOpState(Patriot robot) {
@@ -210,8 +213,13 @@ public class PatriotTeleOpState extends CyberarmState {
         if (armPos.equals("Default")){
             intakeManualControl = false;
             depositManualControl = false;
-            intakeTarget = -20;
             depositTarget = -10;
+
+            if ((robot.posLeftDiffy <= 100 || robot.posLeftDiffy >= -100) && (robot.posRightDiffy <= 100 || robot.posRightDiffy >= -100)){
+                intakeTarget = -20;
+            } else {
+                intakeTarget = 200;
+            }
 
             if (robot.intakeExtendo.getCurrentPosition() < 600){
                 leftDifTarget = 0;
@@ -282,6 +290,14 @@ public class PatriotTeleOpState extends CyberarmState {
 
     @Override
     public void exec() {
+
+        if (robot.intakeExtendo.getVelocity() > maxExtendoVelo){
+            maxExtendoVelo = robot.intakeExtendo.getVelocity();
+        }
+
+
+        robot.OdoLocalizer();
+
         robot.readOctoQuad();
 
         // -------------------------------------------------------------------------------------------------------------- Player 1 (Wheels)
@@ -307,6 +323,10 @@ public class PatriotTeleOpState extends CyberarmState {
         engine.telemetry.addData("imu yaw", -robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
         engine.telemetry.addData("imu pitch", -robot.imu.getRobotYawPitchRollAngles().getPitch(AngleUnit.DEGREES));
         engine.telemetry.addData("imu roll", -robot.imu.getRobotYawPitchRollAngles().getRoll(AngleUnit.DEGREES));
+        engine.telemetry.addData("posX", robot.posX);
+        engine.telemetry.addData("posY", robot.posY);
+        engine.telemetry.addData("posH", robot.posH);
+        engine.telemetry.addData("horizontal extendo max Velo", maxExtendoVelo);
         engine.telemetry.addData("differential", differential);
         engine.telemetry.addData("left diffy pos", robot.posLeftDiffy);
         engine.telemetry.addData("right diffy pos", robot.posRightDiffy);

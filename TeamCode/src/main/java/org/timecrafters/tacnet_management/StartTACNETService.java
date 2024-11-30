@@ -7,15 +7,14 @@ import android.os.Build;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 
-import org.firstinspires.ftc.robotcontroller.internal.FtcRobotControllerActivity;
+import org.timecrafters.TimeCraftersConfigurationTool.library.tacnet.TACNETServerService;
 
 @TeleOp(name = "Start TACNET Service", group = "TACNET")
 public class StartTACNETService extends OpMode {
     @Override
     public void init() {
         Context appContext = hardwareMap.appContext;
-        Intent tacnetIntent = new Intent("org.timecrafters.TimeCraftersConfigurationTool.library.tacnet.ACTION_START_SERVER");
-        tacnetIntent.setPackage("org.timecrafters.TimeCraftersConfigurationTool");
+        Intent tacnetIntent = new Intent(appContext, TACNETServerService.class);
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             appContext.startForegroundService(tacnetIntent);
