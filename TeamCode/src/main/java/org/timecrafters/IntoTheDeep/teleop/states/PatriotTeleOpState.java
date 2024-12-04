@@ -99,18 +99,6 @@ public class PatriotTeleOpState extends CyberarmState {
         }
     }
 
-    public double BasicPController(int target, int currentPos, double Kp, double maxPower) {
-        int error = (target - currentPos);
-        double power = error * Kp;
-
-        if (power > maxPower) {
-            power = maxPower;
-        }
-        if (power < -maxPower) {
-            power = -maxPower;
-        }
-        return power;
-    }
 
     public void ArmSequencer() {
 
@@ -305,8 +293,8 @@ public class PatriotTeleOpState extends CyberarmState {
 
         ArmPos();
 
-        robot.leftDiff.setPower(BasicPController(leftDifTarget, robot.posLeftDiffy, 0.0005, 1));
-        robot.rightDiff.setPower(BasicPController(rightDifTarget, robot.posRightDiffy, 0.0005, 1));
+        robot.leftDiff.setPower(robot.BasicPController(leftDifTarget, robot.posLeftDiffy, 0.0005, 1));
+        robot.rightDiff.setPower(robot.BasicPController(rightDifTarget, robot.posRightDiffy, 0.0005, 1));
 
         ArmSequencer();
 
@@ -333,8 +321,8 @@ public class PatriotTeleOpState extends CyberarmState {
         engine.telemetry.addData("armPos", armPos);
         engine.telemetry.addData("max velo", maxVelocity);
         engine.telemetry.addData("intake extendo pos", robot.intakeExtendo.getCurrentPosition());
-        engine.telemetry.addData("right diffy power", BasicPController(leftDifTarget, robot.posRightDiffy, 0.0005, 1));
-        engine.telemetry.addData("left diffy power", BasicPController(rightDifTarget, robot.posLeftDiffy, 0.0005, 1));
+        engine.telemetry.addData("right diffy power", robot.BasicPController(leftDifTarget, robot.posRightDiffy, 0.0005, 1));
+        engine.telemetry.addData("left diffy power", robot.BasicPController(rightDifTarget, robot.posLeftDiffy, 0.0005, 1));
         engine.telemetry.addData("depositManualControl", depositManualControl);
         engine.telemetry.addData("depo left servo pos", robot.depoLeft.getPosition());
         engine.telemetry.addData("intake extendo", robot.intakeExtendo.getCurrentPosition());
