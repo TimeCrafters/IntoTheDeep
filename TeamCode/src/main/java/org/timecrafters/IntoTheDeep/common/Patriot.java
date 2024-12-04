@@ -43,12 +43,14 @@ public class Patriot implements Robot {
     public IMU imu;
 
     // ---------------------------------------------------------------------------------------------------- Mechanical positions and limits
-    public double depoPivotPos = 0;
-    public double IntakeCLOSE = 1;
-    public double DepoCLOSE = 1;
-    public double IntakeOPEN = 0.4;
-    public double DepoOPEN = 0.7;
-    public int intakeExposed = 5100;
+    public static double depoDefaultPos = 0.04;
+    public static double depoSpecPos = 1;
+    public static double depoBasketPos = 0.6;
+    public static  double IntakeCLOSE = 0.8;
+    public static  double DepoCLOSE = 1;
+    public static  double IntakeOPEN = 0.4;
+    public static  double DepoOPEN = 0.75;
+    public static  int intakeExposed = 5800;
 
     // Odometry driving Variables
     // -----------------------------------------------------------------------------------------------------------------------------------
@@ -395,7 +397,7 @@ public class Patriot implements Robot {
             pidExtendo = rawPidExtendo;
         }
 
-        if ((intakeExtendo.getCurrentPosition() < extendoTarget + 50) && (intakeExtendo.getCurrentPosition() > extendoTarget - 50)){
+        if ((intakeExtendo.getCurrentPosition() < extendoTarget + 10) && (intakeExtendo.getCurrentPosition() > extendoTarget - 10)){
             intakeExtendo.setVelocity(0);
         } else {
             intakeExtendo.setVelocity((1760 * 0.95) * pidExtendo);
