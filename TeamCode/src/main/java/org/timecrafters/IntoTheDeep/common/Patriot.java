@@ -592,4 +592,17 @@ public class Patriot implements Robot {
         posLeftDiffy  = positions[LEFT_DIFFY];
         posRightDiffy = positions[RIGHT_DIFFY];
     }
+
+    public double BasicPController(int target, int currentPos, double Kp, double maxPower) {
+        int error = (target - currentPos);
+        double power = error * Kp;
+
+        if (power > maxPower) {
+            power = maxPower;
+        }
+        if (power < -maxPower) {
+            power = -maxPower;
+        }
+        return power;
+    }
 }

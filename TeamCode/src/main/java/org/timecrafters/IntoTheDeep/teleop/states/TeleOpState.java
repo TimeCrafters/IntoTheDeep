@@ -14,8 +14,10 @@ import dev.cyberarm.engine.V2.CyberarmState;
 
 public class TeleOpState extends CyberarmState {
     Servo theClaw;
-    CRServo left, right;
+    CRServo leftDiff, rightDiff;
     DcMotor motor, frontLeft, frontRight, backLeft, backRight, extension, leftLift, rightLift;
+    DcMotor leftDiffEncoder, rightDiffEncoder;
+    boolean autoLift = false;
     IMU imu;
     boolean fieldcentrictoggle = true;
     boolean theClawOpen = true;
@@ -28,6 +30,11 @@ public class TeleOpState extends CyberarmState {
     @Override
     public void init() {
         theClaw = engine.hardwareMap.servo.get("theClaw");
+        leftDiff = engine.hardwareMap.crservo.get("leftDiff");
+        rightDiff = engine.hardwareMap.crservo.get("rightDiff");
+        leftDiffEncoder = engine.hardwareMap.dcMotor.get("leftDiffEncoder");
+        rightDiffEncoder = engine.hardwareMap.dcMotor.get("rightDiffEncoder");
+
 //        right = hardwareMap.crservo.get("right");
 //        left = hardwareMap.crservo.get("left");
 //        motor = hardwareMap.dcMotor.get("motor");
@@ -110,18 +117,28 @@ public class TeleOpState extends CyberarmState {
             liftTargetPos = leftLift.getCurrentPosition();
 
         } else if (-engine.gamepad1.left_stick_y > 0 && leftLift.getCurrentPosition() <= liftLimit) {
-            leftLift.setPower(-engine.gamepad1.left_stick_y *1);
-            rightLift.setPower(-engine.gamepad1.left_stick_y *1);
+            leftLift.setPower(-engine.gamepad1.left_stick_y * 1);
+            rightLift.setPower(-engine.gamepad1.left_stick_y * 1);
             leftLift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             rightLift.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
             liftTargetPos = leftLift.getCurrentPosition();
+    } else {
+            if (liftTargetPos < 0){
+                liftTargetPos = 0;
+                autoLift = false;
+            } else if (liftTargetPos >= liftLimit) {
+                liftTargetPos = liftLimit;
+                autoLift = false;
+            }
 
-        } else {
-            if (liftLimit < 0)
-                liftLimit = 0;
+            if (autoLift){
+                leftLift.setPower(1);
+                rightLift.setPower(1);
+            } else{
+                leftLift.setPower(0.5);
+                rightLift.setPower(0.5);
 
-            leftLift.setPower(0.5);
-            rightLift.setPower(0.5);
+            }
             leftLift.setTargetPosition(liftTargetPos);
             rightLift.setTargetPosition(liftTargetPos);
             leftLift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
@@ -193,6 +210,16 @@ public class TeleOpState extends CyberarmState {
                     }else{
                         theClaw.setPosition(theClawClosedPostition);
                     }
+                    break;
+                }
+                case "y": {
+                    autoLift = true;
+                    liftTargetPos = liftLimit;
+                    break;
+                }
+                case "a": {
+                    autoLift = true;
+                    liftTargetPos = 0;
                     break;
                 }
             }
