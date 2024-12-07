@@ -97,6 +97,30 @@ public class Patriot implements Robot {
     public int extendoTarget;
     public double rawPidExtendo;
     public double pidExtendo;
+    public double maxExtendoVelo = 0;
+
+    public static double depoP = 0.005, depoI = 0, depoD = 0;
+
+    public double depoLiftIntegralSum = 0;
+    private double depoLiftLastError = 0;
+    ElapsedTime depoLiftTimer = new ElapsedTime();
+    public int depoLiftTarget;
+    public double rawPidDepoLift;
+    public double pidDepoLift;
+    public double maxDepoVelo = 0;
+
+
+    // ------------------------------------------------
+    // Intake and Depo variables.
+
+    public String armPos;
+    public int differential;
+    public boolean depositManualControl = false;
+    public int intakeTarget = 0;
+    public int depositTarget = 0;
+    public double depositorArmPower = 2;
+    public int leftDifTarget = 0;
+    public int rightDifTarget = 0;
 
 
 
@@ -373,6 +397,131 @@ public class Patriot implements Robot {
         
     }
 
+    public void ArmSequencer() {
+
+        if (armPos.equals("Default")) {
+            differential = 0;
+
+            depositManualControl = false;
+            depositTarget = -10;
+
+            if (intakeExtendo.getCurrentPosition() < 1300){
+                leftDifTarget = 0;
+                rightDifTarget = 0;
+            } else {
+                leftDifTarget = intakeExposed + differential;
+                rightDifTarget = intakeExposed - differential;
+            }
+
+            if ((posLeftDiffy <= 200 && posLeftDiffy >= -200) && (posRightDiffy <= 200 && posRightDiffy >= -200)){
+                intakeTarget = 30;
+            } else {
+                intakeTarget = 200;
+            }
+
+            if (intakeExtendo.getCurrentPosition() > 300 || intakeExtendo.getCurrentPosition() < 800) {
+
+                intakeClaw.setPosition(IntakeCLOSE);
+                depoClaw.setPosition(DepoOPEN);
+                depoRight.setPosition(depoDefaultPos);
+                depoLeft.setPosition(depoDefaultPos);
+
+            }
+
+        }
+        if (armPos.equals("Transfer 1/2")) {
+            differential = 0;
+
+            depositManualControl = false;
+            intakeTarget = -20;
+            depositTarget = -10;
+
+            leftDifTarget = 0;
+            rightDifTarget = 0;
+
+            intakeClaw.setPosition(IntakeCLOSE);
+            depoClaw.setPosition(DepoCLOSE);
+            depoRight.setPosition(depoDefaultPos);
+            depoLeft.setPosition(depoDefaultPos);
+
+        }
+        if (armPos.equals("Transfer 2/2")) {
+            differential = 0;
+
+            depositManualControl = false;
+            intakeTarget = 400;
+            depositTarget = -10;
+
+            leftDifTarget = 0;
+            rightDifTarget = 0;
+
+            intakeClaw.setPosition(IntakeOPEN);
+            depoClaw.setPosition(DepoCLOSE);
+            depoRight.setPosition(depoDefaultPos);
+            depoLeft.setPosition(depoDefaultPos);
+
+        }
+        if (armPos.equals("Deposit Spec")) {
+            differential = 0;
+
+            depositManualControl = true;
+            intakeTarget = 400;
+
+            leftDifTarget = 0;
+            rightDifTarget = 0;
+
+            intakeClaw.setPosition(IntakeOPEN);
+            depoRight.setPosition(depoSpecPos);
+            depoLeft.setPosition(depoSpecPos);
+
+        }
+        if (armPos.equals("Deposit Basket")) {
+            differential = 0;
+
+            depositManualControl = true;
+            intakeTarget = 400;
+
+            intakeClaw.setPosition(IntakeOPEN);
+            depoRight.setPosition(depoBasketPos);
+            depoLeft.setPosition(depoBasketPos);
+
+        }
+        if (armPos.equals("Intake")) {
+
+            intakeTarget = 1550;
+
+            depositManualControl = false;
+            depositTarget = -10;
+
+            if (intakeExtendo.getCurrentPosition() < 1100 && intakeExtendo.getCurrentPosition() > 900){
+                intakeClaw.setPosition(IntakeOPEN);
+            }
+
+            if (intakeExtendo.getCurrentPosition() >= 100){
+                leftDifTarget = intakeExposed + differential;
+                rightDifTarget = intakeExposed - differential;
+            }
+
+            depoClaw.setPosition(DepoOPEN);
+            depoRight.setPosition(depoDefaultPos);
+            depoLeft.setPosition(depoDefaultPos);
+
+            if (engine.gamepad2.right_stick_x > 0) {
+                differential -= 300;
+            } else if (engine.gamepad2.right_stick_x < 0) {
+                differential += 300;
+            }
+        }
+
+        if (armPos.equals("Reset")) {
+            intakeClaw.setPosition(IntakeCLOSE);
+            depoClaw.setPosition(DepoOPEN);
+            rightDiff.setPower(engine.gamepad2.right_stick_y);
+            leftDiff.setPower(engine.gamepad2.left_stick_y);
+
+        }
+    }
+
     public double ExtendoPID(double reference, double current) {
         double error = (reference - current);
         ExtendoIntegralSum += error * ExtendoTimer.seconds();
@@ -383,9 +532,43 @@ public class Patriot implements Robot {
         double output = (error * extendoP) + (derivative * extendoD) + (ExtendoIntegralSum * extendoI);
         return output;
     }
+
+    public double DepoLiftPID(double reference, double current) {
+        double error = (reference - current);
+        depoLiftIntegralSum += error * depoLiftTimer.seconds();
+        double derivative = (error - depoLiftLastError) / depoLiftTimer.seconds();
+
+        depoLiftTimer.reset();
+
+        double output = (error * depoP) + (derivative * depoD) + (depoLiftIntegralSum * depoI);
+        return output;
+    }
     public void HorizontalExtendoControl(){
+        extendoTarget = intakeTarget;
 
         rawPidExtendo = ExtendoPID(extendoTarget, intakeExtendo.getCurrentPosition());
+
+        if (Math.abs(rawPidExtendo) > 1) {
+            if (rawPidExtendo < 0) {
+                pidExtendo = -1;
+            } else {
+                pidExtendo = 1;
+            }
+        } else {
+            pidExtendo = rawPidExtendo;
+        }
+
+        if ((intakeExtendo.getCurrentPosition() < extendoTarget + 10) && (intakeExtendo.getCurrentPosition() > extendoTarget - 10)){
+            intakeExtendo.setVelocity(0);
+        } else {
+            intakeExtendo.setVelocity((1760 * 0.95) * pidExtendo);
+        }
+    }
+
+    public void DepoExtendoControl(){
+        depoLiftTarget = depositTarget;
+
+        rawPidDepoLift = DepoLiftPID(depoLiftTarget, intakeExtendo.getCurrentPosition());
 
         if (Math.abs(rawPidExtendo) > 1) {
             if (rawPidExtendo < 0) {
