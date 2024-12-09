@@ -73,6 +73,10 @@ public class MinibotPatriotTeleOpState extends CyberarmState {
                     robot.isPreciseDrivetrainVelocity = !robot.isPreciseDrivetrainVelocity;
                     break;
                 }
+                case "start": {
+                    robot.togglePanic();
+                    break;
+                }
                 case "a": {
                     robot.requestState(State.SAMPLE_COLLECT);
                     break;
@@ -87,10 +91,6 @@ public class MinibotPatriotTeleOpState extends CyberarmState {
                 }
                 case "y": {
                     robot.requestState(State.SAMPLE_DEPOSIT);
-                    break;
-                }
-                case "start": {
-                    robot.togglePanic();
                     break;
                 }
                 case "dpad_down": {
