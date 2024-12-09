@@ -1,11 +1,11 @@
-package dev.cyberarm.minibots.patroit.teleop;
+package dev.cyberarm.minibots.patriot.teleop;
 
-import static dev.cyberarm.minibots.patroit.common.MinibotPatriotRobot.State;
+import static dev.cyberarm.minibots.patriot.common.MinibotPatriotRobot.State;
 
 import com.qualcomm.robotcore.hardware.Gamepad;
 
 import dev.cyberarm.engine.V2.CyberarmState;
-import dev.cyberarm.minibots.patroit.common.MinibotPatriotRobot;
+import dev.cyberarm.minibots.patriot.common.MinibotPatriotRobot;
 
 public class MinibotPatriotTeleOpState extends CyberarmState {
     private final MinibotPatriotRobot robot;

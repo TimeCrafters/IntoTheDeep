@@ -1,6 +1,7 @@
-package dev.cyberarm.minibots.patroit.common;
+package dev.cyberarm.minibots.patriot.common;
 
 import com.qualcomm.hardware.digitalchickenlabs.OctoQuad;
+import com.qualcomm.hardware.lynx.LynxModule;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.hardware.sparkfun.SparkFunOTOS;
 import com.qualcomm.hardware.sparkfun.SparkFunOTOS.Pose2D;
@@ -15,28 +16,16 @@ import com.qualcomm.robotcore.hardware.ServoImplEx;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.CurrentUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
+import org.timecrafters.TimeCraftersConfigurationTool.library.TimeCraftersConfiguration;
 
 import dev.cyberarm.engine.V2.CyberarmEngine;
 import dev.cyberarm.engine.V2.Utilities;
 import dev.cyberarm.engine.V2.Vector2D;
 
 public class MinibotPatriotRobot {
-    public final DcMotorEx frontLeftDrive, backLeftDrive, frontRightDrive, backRightDrive;
-    public final DcMotorEx extension, leftLift, rightLift;
-    public final ServoImplEx intakeClaw, depositorClaw, depositorLeft, depositorRight;
-    public final CRServoImplEx intakeLeftDiff, intakeRightDiff;
-    public final IMU imu;
-    public boolean isPreciseDrivetrainVelocity = false;
-    private final CyberarmEngine engine;
-    private final boolean isAutonomous;
-    private final SparkFunOTOS odometry;
-    private final OctoQuad octoquad;
-    private OctoQuad.EncoderDataBlock octoData = new OctoQuad.EncoderDataBlock();
-    private Pose2D position = new Pose2D();
-    private Pose2D targetPosition = new Pose2D();
-    private State lastState, state = State.COMPACT, requestedState;
-    private boolean isTransferring = false;
+    private static MinibotPatriotRobot instance;
 
+    // Named indices of Octoquad encoders
     public enum OctoEncoder {
         INTAKE_LEFT_DIFF,
         INTAKE_RIGHT_DIFF,
@@ -44,6 +33,7 @@ public class MinibotPatriotRobot {
         DEPOSITOR_RIGHT_DIFF
     }
 
+    // State of robot for automatics
     public enum State {
         COMPACT, // Stow all hands and limbs
         SAMPLE_COLLECT, // Extend extension, stow lift, pre position and open depositor claw, position and open intake claw
@@ -57,9 +47,64 @@ public class MinibotPatriotRobot {
         PANIC // Stop and shutdown all actuators as quickly as possible
     }
 
+    // Various hardware states for automatics to coordinate
+    public enum HardwareState {
+        INTAKE_CLAW_OPEN,
+        INTAKE_CLAW_CLOSED,
+        INTAKE_CLAW_DOWN,
+        INTAKE_CLAW_STOW,
+        EXTENSION_STOW,
+        EXTENSION_MOVING,
+        EXTENSION_OUT,
+        DEPOSITOR_CLAW_OPEN,
+        DEPOSITOR_CLAW_CLOSED,
+        DEPOSITOR_ARM_DEPOSIT,
+        DEPOSITOR_ARM_STOW,
+        LIFT_STOW,
+        LIFT_MOVING,
+        LIFT_OUT,
+        DRIVETRAIN_IDLE,
+        DRIVETRAIN_MOVING,
+    }
+
+    public final DcMotorEx frontLeftDrive, backLeftDrive, frontRightDrive, backRightDrive;
+    public final DcMotorEx extension, leftLift, rightLift;
+    public final ServoImplEx intakeClaw, depositorClaw, depositorLeft, depositorRight;
+    public final CRServoImplEx intakeLeftDiff, intakeRightDiff;
+    public final IMU imu;
+    public TimeCraftersConfiguration config;
+    public boolean isPreciseDrivetrainVelocity = false;
+    private final CyberarmEngine engine;
+    private boolean isAutonomous;
+    private final SparkFunOTOS odometry;
+    private final OctoQuad octoquad;
+    private OctoQuad.EncoderDataBlock octoData = new OctoQuad.EncoderDataBlock();
+    private Pose2D position = new Pose2D();
+    private Pose2D targetPosition = new Pose2D();
+    private State lastState, state = State.COMPACT, requestedState;
+    private boolean isTransferring = false;
+    private int drivetrainVelocity = 1500, drivetrainPreciseVelocity = 1500, drivetrainCoarseVelocity = 1500;
+    private int extensionVelocity = 1500, extensionPreciseVelocity = 1500, extensionCoarseVelocity = 1500;
+    private int liftVelocity = 1500, liftPreciseVelocity = 1500, liftCoarseVelocity = 1500;
+    private int drivetrainGearRatio, drivetrainTicksPerRevolution;
+    private double drivetrainWheelDiameterMM;
+    private int extensionGearRatio, extensionTicksPerRevolution;
+    private double extensionWheelDiameterMM;
+    private int liftGearRatio, liftTicksPerRevolution;
+    private double liftWheelDiameterMM;
+
+    public static MinibotPatriotRobot getInstance() {
+        return instance;
+    }
+
     public MinibotPatriotRobot(CyberarmEngine engine, boolean isAutonomous) {
         this.engine = engine;
         this.isAutonomous = isAutonomous;
+
+        MinibotPatriotRobot.instance = this;
+
+        // TimeCrafters Configuration
+        this.config = new TimeCraftersConfiguration("MinibotPatriot");
 
         // ODOMETRY
         odometry = engine.hardwareMap.get(SparkFunOTOS.class, "otos");
@@ -90,10 +135,60 @@ public class MinibotPatriotRobot {
         intakeLeftDiff = (CRServoImplEx) engine.hardwareMap.crservo.get("leftDiff");
         intakeRightDiff = (CRServoImplEx) engine.hardwareMap.crservo.get("rightDiff");
 
+        loadConfig();
+
         setup();
     }
 
+    private void loadConfig() {
+        final String groupName = "Robot";
+        final String actionName = "Hardware";
+
+        // DRIVETRAIN
+        drivetrainGearRatio = config.variable(groupName, actionName, "drivetrain_gear_ratio").value();
+        drivetrainTicksPerRevolution = config.variable(groupName, actionName, "drivetrain_ticks_per_revolution").value();
+        drivetrainWheelDiameterMM = config.variable(groupName, actionName, "drivetrain_wheel_diameter_mm").value();
+        final double drivetrainCoarseVelocityInches = config.variable(groupName, actionName, "drivetrain_coarse_velocity_inches").value();
+        final double drivetrainPreciseVelocityInches = config.variable(groupName, actionName, "drivetrain_precise_velocity_inches").value();
+
+        drivetrainCoarseVelocity = Utilities.unitToTicks(drivetrainTicksPerRevolution, drivetrainGearRatio, drivetrainWheelDiameterMM, DistanceUnit.INCH, drivetrainCoarseVelocityInches);
+        drivetrainPreciseVelocity = Utilities.unitToTicks(drivetrainTicksPerRevolution, drivetrainGearRatio, drivetrainWheelDiameterMM, DistanceUnit.INCH, drivetrainPreciseVelocityInches);
+
+        drivetrainVelocity = drivetrainCoarseVelocity;
+
+        // EXTENSION
+        extensionGearRatio = config.variable(groupName, actionName, "extension_gear_ratio").value();
+        extensionTicksPerRevolution = config.variable(groupName, actionName, "extension_ticks_per_revolution").value();
+        extensionWheelDiameterMM = config.variable(groupName, actionName, "extension_wheel_diameter_mm").value();
+        final double extensionCoarseVelocityInches = config.variable(groupName, actionName, "extension_coarse_velocity_inches").value();
+        final double extensionPreciseVelocityInches = config.variable(groupName, actionName, "extension_precise_velocity_inches").value();
+
+        extensionCoarseVelocity = Utilities.unitToTicks(extensionTicksPerRevolution, extensionGearRatio, extensionWheelDiameterMM, DistanceUnit.INCH, extensionCoarseVelocityInches);
+        extensionPreciseVelocity = Utilities.unitToTicks(extensionTicksPerRevolution, extensionGearRatio, extensionWheelDiameterMM, DistanceUnit.INCH, extensionPreciseVelocityInches);
+
+        extensionVelocity = extensionCoarseVelocity;
+
+        // LIFT
+        liftGearRatio = config.variable(groupName, actionName, "lift_gear_ratio").value();
+        liftTicksPerRevolution = config.variable(groupName, actionName, "lift_ticks_per_revolution").value();
+        liftWheelDiameterMM = config.variable(groupName, actionName, "lift_wheel_diameter_mm").value();
+        final double liftCoarseVelocityInches = config.variable(groupName, actionName, "lift_coarse_velocity_inches").value();
+        final double liftPreciseVelocityInches = config.variable(groupName, actionName, "lift_precise_velocity_inches").value();
+
+        liftCoarseVelocity = Utilities.unitToTicks(liftTicksPerRevolution, liftGearRatio, liftWheelDiameterMM, DistanceUnit.INCH, liftCoarseVelocityInches);
+        liftPreciseVelocity = Utilities.unitToTicks(liftTicksPerRevolution, liftGearRatio, liftWheelDiameterMM, DistanceUnit.INCH, liftPreciseVelocityInches);
+
+        liftVelocity = liftCoarseVelocity;
+
+        // INTAKE CLAW
+
+        // DEPOSITOR CLAW
+    }
+
     private void setup() {
+        // Lynx Modules
+        Utilities.hubsBulkReadMode(engine.hardwareMap, LynxModule.BulkCachingMode.MANUAL);
+
         // ODOMETRY
         odometry.setLinearUnit(DistanceUnit.INCH);
         odometry.setAngularUnit(AngleUnit.DEGREES);
@@ -102,7 +197,7 @@ public class MinibotPatriotRobot {
 
         // Only reset sensor for autonomous
         if (!isAutonomous) {
-            odometry.calibrateImu();
+            odometry.calibrateImu(255, false);
             odometry.resetTracking();
 
             // FIXME: calculate sensor offset
@@ -119,9 +214,15 @@ public class MinibotPatriotRobot {
 
         imu.initialize(parameters);
 
+        if (isAutonomous)
+            imu.resetYaw();
+
         // OCTOQUAD / ENCODERS
         octoquad.setSingleEncoderDirection(OctoEncoder.INTAKE_LEFT_DIFF.ordinal(), OctoQuad.EncoderDirection.FORWARD);
         octoquad.setSingleEncoderDirection(OctoEncoder.INTAKE_RIGHT_DIFF.ordinal(), OctoQuad.EncoderDirection.REVERSE);
+
+        if (isAutonomous)
+            octoquad.resetEverything();
 
         // MOTORS
         // only reset encoders when starting autonomous, preserves positions for TeleOp automatics)
@@ -176,6 +277,9 @@ public class MinibotPatriotRobot {
             return;
         }
 
+        // Lynx Modules
+        Utilities.hubsClearBulkReadCache(engine.hardwareMap);
+
         // ODOMETRY
         position = odometry.getPosition();
 
@@ -204,7 +308,9 @@ public class MinibotPatriotRobot {
     public void telemetry() {
         engine.telemetry.addLine("Patriot Robot");
         engine.telemetry.addData("State", "%s", state.name());
-        engine.telemetry.addData("Position", "X: %.3f\", Y: %.3f\", H: %.3f\"", position.x, position.y, position.h);
+        engine.telemetry.addData("Requested State", "%s", requestedState.name());
+        engine.telemetry.addData("Position", "X: %.3f\", Y: %.3f\", H: %.3f°, IMU: %.3f°", position.x, position.y, position.h, Utilities.facing(imu));
+        engine.telemetry.addData("Target Position", "X: %.3f\", Y: %.3f\", H: %.3f°", targetPosition.x, targetPosition.y, targetPosition.h);
         engine.telemetry.addLine("");
         engine.telemetry.addLine("MOTORS");
         engine.telemetry.addData("Extension", "Position: %d, Power: %.3f, Velocity: %.3f, Current: %.3fA", extension.getCurrentPosition(), extension.getPower(), extension.getVelocity(), extension.getCurrent(CurrentUnit.AMPS));
@@ -247,6 +353,10 @@ public class MinibotPatriotRobot {
         this.targetPosition = position;
     }
 
+    public void setTeleOp() {
+        this.isAutonomous = false;
+    }
+
     public void drivetrainRobotCentric(double forward, double right, double rotate) {
         // double y = -gamepad1.left_stick_y; // Remember, Y stick value is reversed
         //  double x = gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
@@ -261,11 +371,10 @@ public class MinibotPatriotRobot {
         double frontRightPower = (forward - right - rotate) / denominator;
         double backRightPower = (forward + right - rotate) / denominator;
 
-        // FIXME: Use velocity
-        frontLeftDrive.setPower(frontLeftPower);
-        backLeftDrive.setPower(backLeftPower);
-        frontRightDrive.setPower(frontRightPower);
-        backRightDrive.setPower(backRightPower);
+        frontLeftDrive.setVelocity(frontLeftPower * drivetrainVelocity);
+        backLeftDrive.setVelocity(backLeftPower * drivetrainVelocity);
+        frontRightDrive.setVelocity(frontRightPower * drivetrainVelocity);
+        backRightDrive.setVelocity(backRightPower * drivetrainVelocity);
     }
 
     public void drivetrainFieldCentric(double forward, double right, double rotate) {
@@ -290,20 +399,101 @@ public class MinibotPatriotRobot {
         double frontRightPower = (rotY - rotX - rotate) / denominator;
         double backRightPower = (rotY + rotX - rotate) / denominator;
 
-        // FIXME: Use velocity
-        frontLeftDrive.setPower(frontLeftPower);
-        backLeftDrive.setPower(backLeftPower);
-        frontRightDrive.setPower(frontRightPower);
-        backRightDrive.setPower(backRightPower);
+        frontLeftDrive.setVelocity(frontLeftPower * drivetrainVelocity);
+        backLeftDrive.setVelocity(backLeftPower * drivetrainVelocity);
+        frontRightDrive.setVelocity(frontRightPower * drivetrainVelocity);
+        backRightDrive.setVelocity(backRightPower * drivetrainVelocity);
+    }
+
+    // FIXME: Use proper servo positions
+    public void positionClaw(HardwareState state) {
+        switch (state) {
+            case DEPOSITOR_CLAW_CLOSED: {
+                depositorClaw.setPosition(0);
+                break;
+            }
+            case DEPOSITOR_CLAW_OPEN: {
+                depositorClaw.setPosition(1);
+                break;
+            }
+            case INTAKE_CLAW_CLOSED: {
+                intakeClaw.setPosition(0);
+                break;
+            }
+            case INTAKE_CLAW_OPEN: {
+                intakeClaw.setPosition(1);
+                break;
+            }
+        }
+    }
+
+    // FIXME: Use proper servo positions
+    public void positionDepositorArm(HardwareState state) {
+        switch (state) {
+            case DEPOSITOR_ARM_STOW: {
+                depositorLeft.setPosition(0);
+                depositorRight.setPosition(0);
+                break;
+            }
+            case DEPOSITOR_ARM_DEPOSIT: {
+                depositorLeft.setPosition(1);
+                depositorRight.setPosition(1);
+                break;
+            }
+        }
+    }
+
+    public void setLiftReach(double targetInches, double toleranceInches) {
+        final int targetPosition = Utilities.unitToTicks(
+                liftTicksPerRevolution,
+                liftGearRatio,
+                liftWheelDiameterMM,
+                DistanceUnit.INCH,
+                targetInches);
+        final int targetTolerance = Utilities.unitToTicks(
+                liftTicksPerRevolution,
+                liftGearRatio,
+                liftWheelDiameterMM,
+                DistanceUnit.INCH,
+                toleranceInches);
+
+        leftLift.setTargetPosition(targetPosition);
+        rightLift.setTargetPosition(targetPosition);
+
+        leftLift.setTargetPositionTolerance(targetTolerance);
+        rightLift.setTargetPositionTolerance(targetTolerance);
+    }
+
+    public void setExtensionReach(double targetInches, double toleranceInches) {
+        final int targetPosition = Utilities.unitToTicks(
+                extensionTicksPerRevolution,
+                extensionGearRatio,
+                extensionWheelDiameterMM,
+                DistanceUnit.INCH,
+                targetInches);
+        final int targetTolerance = Utilities.unitToTicks(
+                extensionTicksPerRevolution,
+                extensionGearRatio,
+                extensionWheelDiameterMM,
+                DistanceUnit.INCH,
+                toleranceInches);
+
+        extension.setTargetPosition(targetPosition);
+        extension.setTargetPositionTolerance(targetTolerance);
     }
 
     public State getState() {
         return state;
     }
 
+    public State getRequestedState() {
+        return this.requestedState;
+    }
+
     public void requestState(State state) {
         this.requestedState = state;
     }
+
 
     public void togglePanic() {
         if (state == State.PANIC) {
@@ -337,7 +527,6 @@ public class MinibotPatriotRobot {
     }
 
     private void handleExtension() {}
-
     private void handleIntakeClaw() {}
     private void handleDepositorClaw() {}
     private void handleLift() {}
@@ -348,8 +537,8 @@ public class MinibotPatriotRobot {
         // NOTE: May need to swap position and targetPosition vectors around, may result in inverted vector.
         Vector2D targetVector = (new Vector2D(position.x, position.y).minus(new Vector2D(targetPosition.x, targetPosition.y)).normalize());
         // NOTE: May need to swap position heading and targetPosition heading, my result in inverted angle difference.
-        double angleDiff = Utilities.angleDiff(position.h, targetPosition.h);
+        double angleDiff = Utilities.angleDiff(Utilities.facing(position.h), Utilities.facing(targetPosition.h));
 
-        drivetrainFieldCentric(targetVector.y(), targetVector.x(), angleDiff / 360.0);
+        drivetrainFieldCentric(targetVector.y(), targetVector.x(), angleDiff / 180.0);
     }
 }

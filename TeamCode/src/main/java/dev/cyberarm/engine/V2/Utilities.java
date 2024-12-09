@@ -1,6 +1,7 @@
 package dev.cyberarm.engine.V2;
 
 import com.qualcomm.hardware.lynx.LynxModule;
+import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
@@ -23,6 +24,10 @@ public class Utilities {
 
     public static double facing(IMU imu) {
         return facing(imu, 0);
+    }
+
+    public static double facing(double headingDegrees) {
+        return (headingDegrees + 360.0) % 360.0;
     }
 
     public static double heading(double facing) {
@@ -136,6 +141,13 @@ public class Utilities {
         double mm = wheelDiameterMM * Math.PI * ticks / (gearRatio * motorTicksPerRevolution);
 
         return unit.fromUnit(DistanceUnit.MM, mm);
+    }
+
+    public static boolean atTargetPosition(DcMotorEx motor) {
+        return isBetween(
+                motor.getCurrentPosition(),
+                motor.getTargetPosition() - motor.getTargetPositionTolerance() / 2,
+                motor.getTargetPosition() + motor.getTargetPositionTolerance() / 2);
     }
 
     /**
