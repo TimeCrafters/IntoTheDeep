@@ -54,15 +54,17 @@ public class MinibotPatriotRobot {
         INTAKE_DIFFERENTIAL_COLLECT,
         INTAKE_DIFFERENTIAL_STOW,
         EXTENSION_STOW,
-        EXTENSION_MOVING,
         EXTENSION_OUT,
         DEPOSITOR_CLAW_OPEN,
         DEPOSITOR_CLAW_CLOSED,
         DEPOSITOR_ARM_DEPOSIT,
         DEPOSITOR_ARM_STOW,
         LIFT_STOW,
-        LIFT_MOVING,
-        LIFT_OUT,
+        LIFT_LOW_BASKET,
+        LIFT_HIGH_BASKET,
+        LIFT_LOW_RUNG,
+        LIFT_HIGH_RUNG,
+        LIFT_SPECIMEN,
         DRIVETRAIN_IDLE,
         DRIVETRAIN_MOVING,
     }
@@ -499,6 +501,48 @@ public class MinibotPatriotRobot {
         rightLift.setTargetPositionTolerance(targetTolerance);
     }
 
+    // FIXME: Use real numbers
+    public void positionExtension(HardwareState state) {
+        switch (state) {
+            case EXTENSION_OUT: {
+                extension.setTargetPosition(800);
+            }
+            case EXTENSION_STOW: {
+                extension.setTargetPosition(0);
+            }
+        }
+    }
+
+    // FIXME: Use real numbers
+    public void positionLift(HardwareState state) {
+        switch (state) {
+            case LIFT_STOW: {
+                leftLift.setTargetPosition(0);
+                rightLift.setTargetPosition(0);
+            }
+            case LIFT_HIGH_BASKET: {
+                leftLift.setTargetPosition(0);
+                rightLift.setTargetPosition(0);
+            }
+            case LIFT_LOW_BASKET: {
+                leftLift.setTargetPosition(0);
+                rightLift.setTargetPosition(0);
+            }
+            case LIFT_HIGH_RUNG: {
+                leftLift.setTargetPosition(0);
+                rightLift.setTargetPosition(0);
+            }
+            case LIFT_LOW_RUNG: {
+                leftLift.setTargetPosition(0);
+                rightLift.setTargetPosition(0);
+            }
+            case LIFT_SPECIMEN: {
+                leftLift.setTargetPosition(0);
+                rightLift.setTargetPosition(0);
+            }
+        }
+    }
+
     public void setExtensionReach(double targetInches, double toleranceInches) {
         final int targetPosition = Utilities.unitToTicks(
                 extensionTicksPerRevolution,
@@ -586,12 +630,23 @@ public class MinibotPatriotRobot {
 
     private void handleExtension() {}
     private void handleIntakeClaw() {
+        final int extensionPosition = extension.getCurrentPosition();
+        int leftDiffTarget = intakeDifferentialPosition + intakeLeftDifferential;
+        int rightDiffTarget = intakeDifferentialPosition + intakeRightDifferential;
+
+        // Stow collector when not safe to be down
+        // FIXME: Don't use a static number...
+        if (extensionPosition <= 300) {
+            leftDiffTarget = 0;
+            rightDiffTarget = 0;
+        }
+
         intakeLeftController.update(
                 getOctoPosition(OctoEncoder.INTAKE_LEFT_DIFF),
-                intakeDifferentialPosition + intakeLeftDifferential);
+                leftDiffTarget);
         intakeRightController.update(
                 getOctoPosition(OctoEncoder.INTAKE_RIGHT_DIFF),
-                intakeDifferentialPosition + intakeRightDifferential);
+                rightDiffTarget);
     }
     private void handleDepositorClaw() {}
     private void handleLift() {}
