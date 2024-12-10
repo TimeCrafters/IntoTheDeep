@@ -81,6 +81,7 @@ public class MinibotPatriotRobot {
     private final SparkFunOTOS odometry;
     private final OctoQuad octoquad;
     private OctoQuad.EncoderDataBlock octoData = new OctoQuad.EncoderDataBlock();
+    private Pose2D odometrySensorOffset = new Pose2D();
     private Pose2D position = new Pose2D();
     private Pose2D targetPosition = new Pose2D();
     private State lastState, state = State.COMPACT, requestedState;
@@ -156,6 +157,16 @@ public class MinibotPatriotRobot {
         final String groupName = "Robot";
         final String actionName = "Hardware";
 
+        // ODOMETRY
+        final double odometryOffsetXInches = config.variable(groupName, actionName, "odometry_offset_x_inches").value();
+        final double odometryOffsetYInches = config.variable(groupName, actionName, "odometry_offset_y_inches").value();
+        final double odometryOffsetHeadingDegrees = config.variable(groupName, actionName, "odometry_offset_heading_degrees").value();
+        odometrySensorOffset.set(new Pose2D(
+                odometryOffsetXInches,
+                odometryOffsetYInches,
+                odometryOffsetHeadingDegrees
+        ));
+
         // DRIVETRAIN
         drivetrainGearRatio = config.variable(groupName, actionName, "drivetrain_gear_ratio").value();
         drivetrainTicksPerRevolution = config.variable(groupName, actionName, "drivetrain_ticks_per_revolution").value();
@@ -225,9 +236,7 @@ public class MinibotPatriotRobot {
             odometry.calibrateImu(255, false);
             odometry.resetTracking();
 
-            // FIXME: calculate sensor offset
-            odometry.setOffset(new Pose2D(0, 0, 0));
-            // FIXME: determine initial pose for autonomous for absolute field coordinate positioning
+            odometry.setOffset(odometrySensorOffset);
             odometry.setPosition(new Pose2D(0, 0, 0));
         }
 
@@ -390,6 +399,10 @@ public class MinibotPatriotRobot {
 
     public void setTargetPosition(Pose2D position) {
         this.targetPosition = position;
+    }
+
+    public void setInitialPosition(Pose2D position) {
+        this.odometry.setPosition(position);
     }
 
     public void setTeleOp() {
