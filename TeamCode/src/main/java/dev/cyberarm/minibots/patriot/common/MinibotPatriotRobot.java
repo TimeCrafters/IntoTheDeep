@@ -51,8 +51,8 @@ public class MinibotPatriotRobot {
     public enum HardwareState {
         INTAKE_CLAW_OPEN,
         INTAKE_CLAW_CLOSED,
-        INTAKE_CLAW_DOWN,
-        INTAKE_CLAW_STOW,
+        INTAKE_DIFFERENTIAL_COLLECT,
+        INTAKE_DIFFERENTIAL_STOW,
         EXTENSION_STOW,
         EXTENSION_MOVING,
         EXTENSION_OUT,
@@ -92,6 +92,13 @@ public class MinibotPatriotRobot {
     private double extensionWheelDiameterMM;
     private int liftGearRatio, liftTicksPerRevolution;
     private double liftWheelDiameterMM;
+    private double intakeClawOpenPosition = 0.4, intakeClawClosedPosition = 1.0;
+    private int intakeDifferentialStowPosition = 0, intakeDifferentialCollectPosition = 5800, intakeDifferentialPosition = 0, intakeLeftDifferential = 0, intakeRightDifferential = 0;
+    private double depositorClawOpenPosition = 0.75, depositorClawClosedPosition = 1.0;
+    private int depositorDifferentialUprightPosition = 0, depositorDifferentialInvertedPosition = 0, depositorPosition = 0, depositorDifferential = 0;
+    private double depositorArmStowPosition = 0.04, depositorArmDepositPosition = 1.0;
+    private final PIDFController intakeLeftController, intakeRightController;
+
 
     public static MinibotPatriotRobot getInstance() {
         return instance;
@@ -134,6 +141,9 @@ public class MinibotPatriotRobot {
         // CONTINUOUS SERVOS
         intakeLeftDiff = (CRServoImplEx) engine.hardwareMap.crservo.get("leftDiff");
         intakeRightDiff = (CRServoImplEx) engine.hardwareMap.crservo.get("rightDiff");
+
+        intakeLeftController = new PIDFController(intakeLeftDiff);
+        intakeRightController = new PIDFController(intakeRightDiff);
 
         loadConfig();
 
@@ -181,8 +191,21 @@ public class MinibotPatriotRobot {
         liftVelocity = liftCoarseVelocity;
 
         // INTAKE CLAW
+        intakeClawOpenPosition = config.variable(groupName, actionName, "intake_claw_open_position").value();
+        intakeClawClosedPosition = config.variable(groupName, actionName, "intake_claw_closed_position").value();
+
+        intakeDifferentialStowPosition = config.variable(groupName, actionName, "intake_differential_stow_position").value();
+        intakeDifferentialCollectPosition = config.variable(groupName, actionName, "intake_differential_collect_position").value();
 
         // DEPOSITOR CLAW
+        depositorClawOpenPosition = config.variable(groupName, actionName, "depositor_claw_open_position").value();
+        depositorClawClosedPosition = config.variable(groupName, actionName, "depositor_claw_closed_position").value();
+
+        depositorDifferentialUprightPosition = config.variable(groupName, actionName, "depositor_differential_upright_position").value();
+        depositorDifferentialInvertedPosition = config.variable(groupName, actionName, "depositor_differential_inverted_position").value();
+
+        depositorArmStowPosition = config.variable(groupName, actionName, "depositor_arm_stow_position").value();
+        depositorArmDepositPosition = config.variable(groupName, actionName, "depositor_arm_deposit_position").value();
     }
 
     private void setup() {
@@ -232,19 +255,26 @@ public class MinibotPatriotRobot {
             leftLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             rightLift.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
 
+            extension.setTargetPosition(0);
+            leftLift.setTargetPosition(0);
+            rightLift.setTargetPosition(0);
+
             frontLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             backLeftDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             frontRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
             backRightDrive.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
         }
 
+        extension.setMode(DcMotor.RunMode.RUN_TO_POSITION);
         extension.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
         leftLift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        leftLift.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        leftLift.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
         leftLift.setDirection(DcMotorSimple.Direction.REVERSE);
+
         rightLift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        rightLift.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
+        rightLift.setMode(DcMotorEx.RunMode.RUN_TO_POSITION);
+        rightLift.setDirection(DcMotorSimple.Direction.FORWARD);
 
         frontLeftDrive.setDirection(DcMotorEx.Direction.FORWARD);
         frontLeftDrive.setMode(DcMotorEx.RunMode.RUN_USING_ENCODER);
@@ -265,6 +295,13 @@ public class MinibotPatriotRobot {
         // SERVOS
         depositorLeft.setDirection(Servo.Direction.FORWARD);
         depositorRight.setDirection(Servo.Direction.REVERSE);
+
+        if (isAutonomous) {
+            positionClaw(HardwareState.INTAKE_CLAW_CLOSED);
+            positionClaw(HardwareState.DEPOSITOR_CLAW_CLOSED);
+
+            positionDepositorArm(HardwareState.DEPOSITOR_ARM_STOW);
+        }
 
         // CONTINUOUS SERVOS
         intakeLeftDiff.setDirection(DcMotorSimple.Direction.FORWARD);
@@ -405,39 +442,37 @@ public class MinibotPatriotRobot {
         backRightDrive.setVelocity(backRightPower * drivetrainVelocity);
     }
 
-    // FIXME: Use proper servo positions
     public void positionClaw(HardwareState state) {
         switch (state) {
             case DEPOSITOR_CLAW_CLOSED: {
-                depositorClaw.setPosition(0);
+                depositorClaw.setPosition(depositorClawClosedPosition);
                 break;
             }
             case DEPOSITOR_CLAW_OPEN: {
-                depositorClaw.setPosition(1);
+                depositorClaw.setPosition(depositorClawOpenPosition);
                 break;
             }
             case INTAKE_CLAW_CLOSED: {
-                intakeClaw.setPosition(0);
+                intakeClaw.setPosition(intakeClawClosedPosition);
                 break;
             }
             case INTAKE_CLAW_OPEN: {
-                intakeClaw.setPosition(1);
+                intakeClaw.setPosition(intakeClawOpenPosition);
                 break;
             }
         }
     }
 
-    // FIXME: Use proper servo positions
     public void positionDepositorArm(HardwareState state) {
         switch (state) {
             case DEPOSITOR_ARM_STOW: {
-                depositorLeft.setPosition(0);
-                depositorRight.setPosition(0);
+                depositorLeft.setPosition(depositorArmStowPosition);
+                depositorRight.setPosition(depositorArmStowPosition);
                 break;
             }
             case DEPOSITOR_ARM_DEPOSIT: {
-                depositorLeft.setPosition(1);
-                depositorRight.setPosition(1);
+                depositorLeft.setPosition(depositorArmDepositPosition);
+                depositorRight.setPosition(depositorArmDepositPosition);
                 break;
             }
         }
@@ -481,6 +516,29 @@ public class MinibotPatriotRobot {
         extension.setTargetPosition(targetPosition);
         extension.setTargetPositionTolerance(targetTolerance);
     }
+
+    public void positionIntakeDifferential(HardwareState state, int differential) {
+        if (state == HardwareState.INTAKE_DIFFERENTIAL_COLLECT)
+            intakeDifferentialPosition = intakeDifferentialCollectPosition;
+        if (state == HardwareState.INTAKE_DIFFERENTIAL_STOW)
+            intakeDifferentialPosition = intakeDifferentialStowPosition;
+
+        intakeLeftDifferential = differential;
+        intakeRightDifferential = -differential;
+    }
+
+    public boolean intakeDifferentialAtPosition() {
+        return (Utilities.isBetween(
+                    getOctoPosition(OctoEncoder.INTAKE_LEFT_DIFF),
+                    intakeDifferentialPosition + intakeLeftDifferential - 50,
+                    intakeDifferentialPosition + intakeLeftDifferential + 50) &&
+                Utilities.isBetween(
+                    getOctoPosition(OctoEncoder.INTAKE_RIGHT_DIFF),
+                    intakeDifferentialPosition + intakeRightDifferential - 50,
+                    intakeDifferentialPosition + intakeRightDifferential + 50));
+    }
+
+
 
     public State getState() {
         return state;
@@ -527,7 +585,14 @@ public class MinibotPatriotRobot {
     }
 
     private void handleExtension() {}
-    private void handleIntakeClaw() {}
+    private void handleIntakeClaw() {
+        intakeLeftController.update(
+                getOctoPosition(OctoEncoder.INTAKE_LEFT_DIFF),
+                intakeDifferentialPosition + intakeLeftDifferential);
+        intakeRightController.update(
+                getOctoPosition(OctoEncoder.INTAKE_RIGHT_DIFF),
+                intakeDifferentialPosition + intakeRightDifferential);
+    }
     private void handleDepositorClaw() {}
     private void handleLift() {}
     private void handleDrivetrain() {

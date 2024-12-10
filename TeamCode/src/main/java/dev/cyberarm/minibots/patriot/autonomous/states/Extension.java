@@ -28,7 +28,6 @@ public class Extension extends CyberarmState {
     @Override
     public void exec() {
         if (runTime() >= timeoutMS) {
-            // FIXME: Halt lift when timing out?
             finished();
             return;
         }
