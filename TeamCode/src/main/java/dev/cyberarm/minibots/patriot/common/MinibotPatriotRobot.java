@@ -309,7 +309,7 @@ public class MinibotPatriotRobot {
 
         if (isAutonomous) {
             positionClaw(HardwareState.INTAKE_CLAW_CLOSED);
-            positionClaw(HardwareState.DEPOSITOR_CLAW_CLOSED);
+            positionClaw(HardwareState.DEPOSITOR_CLAW_OPEN);
 
             positionDepositorArm(HardwareState.DEPOSITOR_ARM_STOW);
         }
