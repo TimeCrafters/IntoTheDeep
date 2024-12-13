@@ -36,11 +36,26 @@ public class ArmSequencerState extends CyberarmState {
 
     @Override
     public void exec() {
+        if (armPos.equals("Intake")){
+            if (robot.rightIntakeDifInPos
+                    && robot.leftIntakeDifInPos
+                    && robot.intakeSlidesInPos){
+                setHasFinished(true);
+            }
+        }
+        if (armPos.equals("Deposit Basket")) {
+            if (robot.depositSlidesInPos
+                    && robot.rightDepositDifInPos
+                    && robot.leftDepositDifInPos) {
+                setHasFinished(true);
+            }
+        }
         if (robot.rightIntakeDifInPos
                 && robot.leftIntakeDifInPos
                 && robot.rightDepositDifInPos
                 && robot.leftDepositDifInPos
-                && robot.slidesInPos) {
+                && robot.intakeSlidesInPos
+                && robot.depositSlidesInPos) {
 
             if (armPos.equals("Transfer 1/2")){
                 if (robot.transferOneComplete){
@@ -63,6 +78,14 @@ public class ArmSequencerState extends CyberarmState {
         engine.telemetry.addData("h pos odo", Math.toDegrees(robot.posH));
         engine.telemetry.addData("h pos odo target", Math.toDegrees(robot.hTarget));
         engine.telemetry.addData("h pos imu", robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
+        engine.telemetry.addData("leftIntakeDifInPos", robot.leftIntakeDifInPos);
+        engine.telemetry.addData("rightIntakeDifInPos", robot.rightIntakeDifInPos);
+        engine.telemetry.addData("rightDepositDifInPos", robot.rightIntakeDifInPos);
+        engine.telemetry.addData("leftDepositDifInPos", robot.leftIntakeDifInPos);
+        engine.telemetry.addData("slidesInPos", robot.depositSlidesInPos);
+        engine.telemetry.addData("slidesInPos", robot.intakeSlidesInPos);
+        engine.telemetry.addData("slidesInPos", robot.depositTarget);
+        engine.telemetry.addData("slidesInPos", robot.depositRightExtendo.getCurrentPosition());
         engine.telemetry.addData("input y pidPower", robot.pidX);
         engine.telemetry.addData("input x pidPower", robot.pidY);
         engine.telemetry.addData("raw x pid", robot.XPIDControl(robot.xTarget, robot.posX));

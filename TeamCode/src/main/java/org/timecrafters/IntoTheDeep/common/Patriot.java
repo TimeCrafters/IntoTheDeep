@@ -140,7 +140,8 @@ public class Patriot implements Robot {
     public boolean leftIntakeDifInPos = false;
     public boolean rightDepositDifInPos = false;
     public boolean leftDepositDifInPos = false;
-    public boolean slidesInPos = false;
+    public boolean intakeSlidesInPos = false;
+    public boolean depositSlidesInPos = false;
     public boolean transferOneComplete = false;
     public boolean transferTwoComplete = false;
     public boolean autonomous = false;
@@ -181,6 +182,8 @@ public class Patriot implements Robot {
         winch = (DcMotorEx) engine.hardwareMap.dcMotor.get("winch");
 
         depositLeftExtendo.setDirection(DcMotorSimple.Direction.REVERSE);
+        depositLeftExtendo.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        depositRightExtendo.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
 
         fl = (DcMotorEx) engine.hardwareMap.dcMotor.get("fl");
@@ -446,33 +449,30 @@ public class Patriot implements Robot {
         rightDepositDiff.setPower(BasicPController(rightDepositDifTarget, posDepositRightDiffy, 0.0005, 1));
 
 
-        if (posDepositRightDiffy > rightDepositDifTarget - 50 && posDepositRightDiffy < rightDepositDifTarget + 50) {
+        if (posDepositRightDiffy > rightDepositDifTarget - 100 && posDepositRightDiffy < rightDepositDifTarget + 100) {
             rightDepositDifInPos = true;
         } else {
             rightDepositDifInPos = false;
         }
 
-        if (posDepositLeftDiffy > leftDepositDifTarget - 50 && posDepositLeftDiffy < leftDepositDifTarget + 50) {
+        if (posDepositLeftDiffy > leftDepositDifTarget - 100 && posDepositLeftDiffy < leftDepositDifTarget + 100) {
             leftDepositDifInPos = true;
         } else {
             leftDepositDifInPos = false;
         }
-        if (posIntakeRightDiffy > rightIntakeDifTarget - 50 && posIntakeRightDiffy < rightIntakeDifTarget + 50) {
+        if (posIntakeRightDiffy > rightIntakeDifTarget - 100 && posIntakeRightDiffy < rightIntakeDifTarget + 100) {
             rightIntakeDifInPos = true;
         } else {
             rightIntakeDifInPos = false;
         }
 
-        if (posIntakeLeftDiffy > leftIntakeDifTarget - 50 && posIntakeLeftDiffy < leftIntakeDifTarget + 50) {
+        if (posIntakeLeftDiffy > leftIntakeDifTarget - 100 && posIntakeLeftDiffy < leftIntakeDifTarget + 100) {
             leftIntakeDifInPos = true;
         } else {
             leftIntakeDifInPos = false;
         }
-        if (intakeTarget < 10 && depositRightExtendo.getCurrentPosition() < 10 & depositLeftExtendo.getCurrentPosition() < 10) {
-            slidesInPos = true;
-        } else {
-            slidesInPos = false;
-        }
+        intakeSlidesInPos = (intakeExtendo.getCurrentPosition() < intakeTarget + 10 || intakeExtendo.getCurrentPosition() > intakeTarget - 10);
+        depositSlidesInPos = (depositLeftExtendo.getCurrentPosition() > depositTarget - 200 || depositLeftExtendo.getCurrentPosition() < depositTarget + 20);
 
         if (armPos.equals("Default")) {
 
@@ -740,13 +740,21 @@ public class Patriot implements Robot {
             pidRightDepoLift = rawPidRightDepoLift;
         }
 
-        if ((depositLeftExtendo.getCurrentPosition() < depoLiftTarget + 10) && (depositLeftExtendo.getCurrentPosition() > depoLiftTarget - 10)){
-            depositLeftExtendo.setPower(0);
+        if ((depositLeftExtendo.getCurrentPosition() < depoLiftTarget + 150) && (depositLeftExtendo.getCurrentPosition() > depoLiftTarget - 150)) {
+            if (depositLeftExtendo.getCurrentPosition() < 10) {
+                depositLeftExtendo.setPower(0);
+            } else if (armPos.equals("Deposit Basket")) {
+                depositLeftExtendo.setPower(0);
+            }
         } else {
             depositLeftExtendo.setPower(pidLeftDepoLift);
         }
-        if ((depositRightExtendo.getCurrentPosition() < depoLiftTarget + 10) && (depositRightExtendo.getCurrentPosition() > depoLiftTarget - 10)){
-            depositRightExtendo.setPower(0);
+        if ((depositRightExtendo.getCurrentPosition() < depoLiftTarget + 150) && (depositRightExtendo.getCurrentPosition() > depoLiftTarget - 150)){
+            if (depositRightExtendo.getCurrentPosition() < 10) {
+                depositRightExtendo.setPower(0);
+            } else if (armPos.equals("Deposit Basket")) {
+                depositRightExtendo.setPower(0);
+            }
         } else {
             depositRightExtendo.setPower(pidRightDepoLift);
         }
