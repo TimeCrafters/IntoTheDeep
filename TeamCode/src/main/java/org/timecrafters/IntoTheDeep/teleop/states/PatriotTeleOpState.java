@@ -16,8 +16,6 @@ public class PatriotTeleOpState extends CyberarmState {
     private double maxVelocity = 2320 * 0.8;
     private boolean lbsVar;
     private String armPos = "default";
-//    public int differential;
-//    public boolean intakeManualControl = false;
     public boolean depositManualControl = false;
     public double depositorArmPower = 2;
 //    public int intakeTarget = 0;
@@ -85,16 +83,20 @@ public class PatriotTeleOpState extends CyberarmState {
             armPos = "Default";
         } else if (engine.gamepad2.a && engine.gamepad2.left_bumper && !engine.gamepad2.right_bumper) {
             armPos = "Transfer 1/2";
+            robot.initialTime = System.currentTimeMillis();
         } else if (engine.gamepad2.a && engine.gamepad2.left_bumper && engine.gamepad2.right_bumper) {
             armPos = "Transfer 2/2";
-        } else if (engine.gamepad2.y && !engine.gamepad2.left_bumper) {
-            armPos = "Deposit Spec";
-        } else if (engine.gamepad2.y && engine.gamepad2.left_bumper) {
+            robot.initialTime = System.currentTimeMillis();
+        } else if (engine.gamepad2.b) {
+            armPos = "Deposit Spec Collecting";
+            robot.depositFlip = false;
+        } else if (engine.gamepad2.left_bumper && armPos.equals("Deposit Spec Collecting")) {
+            armPos = "Deposit Spec Collected";
+            robot.depositFlip = true;
+        } else if (engine.gamepad2.y) {
             armPos = "Deposit Basket";
         } else if (engine.gamepad2.x) {
             armPos = "Intake";
-        } else if (engine.gamepad2.b && !engine.gamepad2.start) {
-            armPos = "Reset";
         }
     }
 
@@ -111,167 +113,7 @@ public class PatriotTeleOpState extends CyberarmState {
         return power;
     }
 
-//    public void ArmSequencer() {
 //
-//        if (armPos.equals("Default")) {
-//            differential = 0;
-//
-//            if (robot.intakeExtendo.getCurrentPosition() > 300 || robot.intakeExtendo.getCurrentPosition() < 800) {
-//
-//                robot.intakeClaw.setPosition(robot.IntakeCLOSE);
-//                robot.depoClaw.setPosition(robot.DepoOPEN);
-//                robot.depoRight.setPosition(robot.depoDefaultPos);
-//                robot.depoLeft.setPosition(robot.depoDefaultPos);
-//
-//            }
-//
-//        }
-//        if (armPos.equals("Transfer 1/2")) {
-//            differential = 0;
-//            robot.intakeClaw.setPosition(robot.IntakeCLOSE);
-//            robot.depoClaw.setPosition(robot.DepoCLOSE);
-//            robot.depoRight.setPosition(robot.depoDefaultPos);
-//            robot.depoLeft.setPosition(robot.depoDefaultPos);
-//
-//        }
-//        if (armPos.equals("Transfer 2/2")) {
-//            differential = 0;
-//            robot.intakeClaw.setPosition(robot.IntakeOPEN);
-//            robot.depoClaw.setPosition(robot.DepoCLOSE);
-//            robot.depoRight.setPosition(robot.depoDefaultPos);
-//            robot.depoLeft.setPosition(robot.depoDefaultPos);
-//
-//        }
-//        if (armPos.equals("Deposit Spec")) {
-//            differential = 0;
-//            robot.intakeClaw.setPosition(robot.IntakeOPEN);
-//            robot.depoRight.setPosition(robot.depoSpecPos);
-//            robot.depoLeft.setPosition(robot.depoSpecPos);
-//
-//        }
-//        if (armPos.equals("Deposit Basket")) {
-//            differential = 0;
-//            robot.intakeClaw.setPosition(robot.IntakeOPEN);
-//            robot.depoRight.setPosition(robot.depoBasketPos);
-//            robot.depoLeft.setPosition(robot.depoBasketPos);
-//
-//        }
-//        if (armPos.equals("Intake")) {
-//
-//            robot.depoClaw.setPosition(robot.DepoOPEN);
-//            robot.depoRight.setPosition(robot.depoDefaultPos);
-//            robot.depoLeft.setPosition(robot.depoDefaultPos);
-//
-//            if (engine.gamepad2.right_stick_x > 0) {
-//                differential -= 300;
-//            } else if (engine.gamepad2.right_stick_x < 0) {
-//                differential += 300;
-//            }
-//        }
-//
-//        if (armPos.equals("Reset")) {
-//            robot.intakeClaw.setPosition(robot.IntakeCLOSE);
-//            robot.depoClaw.setPosition(robot.DepoOPEN);
-//            robot.rightDiff.setPower(engine.gamepad2.right_stick_y);
-//            robot.leftDiff.setPower(engine.gamepad2.left_stick_y);
-//
-//        }
-//    }
-//
-//    public void SlideAutomationControl(){
-//
-////        if (intakeManualControl){
-////            robot.intakeExtendo.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-////            robot.intakeExtendo.setPower(-engine.gamepad2.left_stick_y);
-////        }
-//        if (depositManualControl){
-//            robot.depositLeftExtendo.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-//            robot.depositRightExtendo.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
-//            robot.depositLeftExtendo.setPower(engine.gamepad2.left_stick_y);
-//            robot.depositRightExtendo.setPower(engine.gamepad2.left_stick_y);
-//        }
-//        if (!depositManualControl){
-//            robot.depositLeftExtendo.setTargetPosition(depositTarget);
-//            robot.depositRightExtendo.setTargetPosition(depositTarget);
-//
-//            robot.depositLeftExtendo.setPower(depositorArmPower);
-//            robot.depositRightExtendo.setPower(depositorArmPower);
-//
-//            robot.depositLeftExtendo.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//            robot.depositRightExtendo.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-//        }
-////        if (!intakeManualControl) {
-////            robot.intakeExtendo.setTargetPosition(intakeTarget);
-////            robot.intakeExtendo.setPower(intakeArmPower);
-////            robot.intakeExtendo.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-////        }
-//
-//
-//        if (armPos.equals("Default")){
-//            depositManualControl = false;
-//            depositTarget = -10;
-//
-//            if (robot.intakeExtendo.getCurrentPosition() < 1300){
-//                leftDifTarget = 0;
-//                rightDifTarget = 0;
-//            } else {
-//                leftDifTarget = robot.intakeExposed + differential;
-//                rightDifTarget = robot.intakeExposed - differential;
-//            }
-//
-//            if ((robot.posLeftDiffy <= 150 && robot.posLeftDiffy >= -150) && (robot.posRightDiffy <= 150 && robot.posRightDiffy >= -150)){
-//                intakeTarget = 0;
-//            } else {
-//                intakeTarget = 200;
-//            }
-//
-//
-//
-//        }
-//        if (armPos.equals("Transfer 1/2")){
-//            depositManualControl = false;
-//            intakeTarget = -20;
-//            depositTarget = -10;
-//
-//            leftDifTarget = 0;
-//            rightDifTarget = 0;
-//        }
-//        if (armPos.equals("Transfer 2/2")){
-//            depositManualControl = false;
-//            intakeTarget = 400;
-//            depositTarget = -10;
-//
-//            leftDifTarget = 0;
-//            rightDifTarget = 0;
-//
-//        }
-//        if (armPos.equals("Deposit Spec")){
-//            depositManualControl = true;
-//            intakeTarget = 400;
-//
-//            leftDifTarget = 0;
-//            rightDifTarget = 0;
-//        }
-//        if (armPos.equals("Deposit Basket")){
-//            depositManualControl = true;
-//            intakeTarget = 400;
-//        }
-//
-//        if (armPos.equals("Intake")){
-//
-//            intakeTarget = 1550;
-//
-//            if (robot.intakeExtendo.getCurrentPosition() >= 100){
-//                leftDifTarget = robot.intakeExposed + differential;
-//                rightDifTarget = robot.intakeExposed - differential;
-//            }
-//
-//            depositManualControl = false;
-//            depositTarget = -10;
-//
-//
-//        }
-//    }
 
     @Override
     public void init() {
@@ -283,24 +125,22 @@ public class PatriotTeleOpState extends CyberarmState {
 
     @Override
     public void exec() {
-        if (robot.intakeExtendo.getVelocity() > maxExtendoVelo){
-            maxExtendoVelo = robot.intakeExtendo.getVelocity();
-        }
+
+        robot.autonomous = false;
 
         robot.readOctoQuad();
-
-        // -------------------------------------------------------------------------------------------------------------- Player 1 (Wheels)
-        DriveTrainControl();
-
-        // ---------------------------------------------------------------------------------------------------------------- Player 2 (Toys)
-
         ArmPos();
         robot.armPos = armPos;
-
         robot.ArmSequencer();
-
         robot.extendoTarget = robot.intakeTarget;
         robot.HorizontalExtendoControl();
+        DriveTrainControl();
+
+        if (engine.gamepad1.dpad_up){
+            robot.winch.setPower(1);
+        } else if (engine.gamepad1.dpad_down){
+            robot.winch.setPower(-1);
+        } else robot.winch.setPower(0);
 
 
         if (robot.depositManualControl){
@@ -310,30 +150,15 @@ public class PatriotTeleOpState extends CyberarmState {
             robot.depositRightExtendo.setPower(engine.gamepad2.left_stick_y);
         }
         if (!robot.depositManualControl){
-            robot.depositLeftExtendo.setTargetPosition(depositTarget);
-            robot.depositRightExtendo.setTargetPosition(depositTarget);
-
-            robot.depositLeftExtendo.setPower(depositorArmPower);
-            robot.depositRightExtendo.setPower(depositorArmPower);
-
-            robot.depositLeftExtendo.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-            robot.depositRightExtendo.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+            robot.DepoExtendoControl();
         }
-
-//        SlideAutomationControl();
-
-        robot.leftDiff.setPower(BasicPController(robot.leftDifTarget, robot.posLeftDiffy, 0.0005, 1));
-        robot.rightDiff.setPower(BasicPController(robot.rightDifTarget, robot.posRightDiffy, 0.0005, 1));
-
-
-
-
-
 
     }
 
     @Override
     public void telemetry() {
+        engine.telemetry.addData("depo slide Pos Left", robot.depositLeftExtendo.getCurrentPosition());
+        engine.telemetry.addData("depo slide Pos Right", robot.depositRightExtendo.getCurrentPosition());
         engine.telemetry.addData("imu yaw", -robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
         engine.telemetry.addData("imu pitch", -robot.imu.getRobotYawPitchRollAngles().getPitch(AngleUnit.DEGREES));
         engine.telemetry.addData("imu roll", -robot.imu.getRobotYawPitchRollAngles().getRoll(AngleUnit.DEGREES));
@@ -343,17 +168,20 @@ public class PatriotTeleOpState extends CyberarmState {
         engine.telemetry.addData("pidExtendo", robot.pidExtendo);
         engine.telemetry.addData("horizontal extendo max Velo", maxExtendoVelo);
         engine.telemetry.addData("differential", robot.differential);
-        engine.telemetry.addData("left diffy pos", robot.posLeftDiffy);
-        engine.telemetry.addData("right diffy pos", robot.posRightDiffy);
-        engine.telemetry.addData("left difTarget", robot.leftDifTarget);
-        engine.telemetry.addData("right difTarget", robot.rightDifTarget);
+        engine.telemetry.addData("left diffy pos", robot.posIntakeLeftDiffy);
+        engine.telemetry.addData("right diffy pos", robot.posIntakeRightDiffy);
+        engine.telemetry.addData("left diffy pos", robot.posDepositLeftDiffy);
+        engine.telemetry.addData("right diffy pos", robot.posDepositRightDiffy);
+        engine.telemetry.addData("left difTarget", robot.leftIntakeDifTarget);
+        engine.telemetry.addData("right difTarget", robot.rightIntakeDifTarget);
         engine.telemetry.addData("armPos", armPos);
         engine.telemetry.addData("max velo", maxVelocity);
         engine.telemetry.addData("intake extendo pos", robot.intakeExtendo.getCurrentPosition());
-        engine.telemetry.addData("right diffy power", BasicPController(robot.leftDifTarget, robot.posRightDiffy, 0.0005, 1));
-        engine.telemetry.addData("left diffy power", BasicPController(robot.rightDifTarget, robot.posLeftDiffy, 0.0005, 1));
+        engine.telemetry.addData("right diffy power", BasicPController(robot.leftIntakeDifTarget, robot.posIntakeRightDiffy, 0.0005, 1));
+        engine.telemetry.addData("left diffy power", BasicPController(robot.rightIntakeDifTarget, robot.posIntakeLeftDiffy, 0.0005, 1));
+        engine.telemetry.addData("right diffy power", BasicPController(robot.leftIntakeDifTarget, robot.posIntakeRightDiffy, 0.0005, 1));
+        engine.telemetry.addData("left diffy power", BasicPController(robot.rightIntakeDifTarget, robot.posIntakeLeftDiffy, 0.0005, 1));
         engine.telemetry.addData("depositManualControl", robot.depositManualControl);
-        engine.telemetry.addData("depo left servo pos", robot.depoLeft.getPosition());
         engine.telemetry.addData("intake extendo", robot.intakeExtendo.getCurrentPosition());
     }
 

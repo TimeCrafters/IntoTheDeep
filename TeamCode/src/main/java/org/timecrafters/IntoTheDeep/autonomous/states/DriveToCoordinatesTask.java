@@ -19,5 +19,11 @@ public class DriveToCoordinatesTask extends CyberarmState {
         robot.YDrivePowerModifier();
         robot.HDrivePowerModifier();
         robot.DriveToCoordinates();
+        robot.readOctoQuad();
+        robot.ArmSequencer();
+        robot.HorizontalExtendoControl();
+        robot.DepoExtendoControl();
+
+
     }
 }

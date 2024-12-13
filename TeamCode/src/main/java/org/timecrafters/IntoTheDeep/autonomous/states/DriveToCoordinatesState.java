@@ -50,7 +50,7 @@ public class DriveToCoordinatesState extends CyberarmState {
 
         if (Math.abs(robot.posX - robot.xTarget) < 2.5
                 && Math.abs(robot.posY - robot.yTarget) < 2.5
-                && Math.abs(robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES)) - Math.abs(Math.toDegrees(robot.hTarget)) < 2.5) {
+                && Math.abs(robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES)) - Math.abs(Math.toDegrees(robot.hTarget)) < 1) {
             setHasFinished(true);
         }
     }
@@ -60,7 +60,10 @@ public class DriveToCoordinatesState extends CyberarmState {
     public void telemetry() {
         engine.telemetry.addData("x pos", robot.posX);
         engine.telemetry.addData("y pos", robot.posY);
+        engine.telemetry.addData("x pos target", robot.xTarget);
+        engine.telemetry.addData("y pos target", robot.yTarget);
         engine.telemetry.addData("h pos odo", Math.toDegrees(robot.posH));
+        engine.telemetry.addData("h pos odo target", Math.toDegrees(robot.hTarget));
         engine.telemetry.addData("h pos imu", robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
         engine.telemetry.addData("input y pidPower", robot.pidX);
         engine.telemetry.addData("input x pidPower", robot.pidY);
