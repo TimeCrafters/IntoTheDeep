@@ -89,12 +89,12 @@ public class MinibotPatriotRobot {
     private int drivetrainVelocity = 1500, drivetrainPreciseVelocity = 1500, drivetrainCoarseVelocity = 1500;
     private int extensionVelocity = 1500, extensionPreciseVelocity = 1500, extensionCoarseVelocity = 1500;
     private int liftVelocity = 1500, liftPreciseVelocity = 1500, liftCoarseVelocity = 1500;
-    private int drivetrainGearRatio, drivetrainTicksPerRevolution;
-    private double drivetrainWheelDiameterMM;
-    private int extensionGearRatio, extensionTicksPerRevolution;
-    private double extensionWheelDiameterMM;
-    private int liftGearRatio, liftTicksPerRevolution;
-    private double liftWheelDiameterMM;
+    private int drivetrainTicksPerRevolution;
+    private double drivetrainGearRatio, drivetrainWheelDiameterMM;
+    private int extensionTicksPerRevolution;
+    private double extensionGearRatio, extensionWheelDiameterMM;
+    private int liftTicksPerRevolution;
+    private double liftGearRatio, liftWheelDiameterMM;
     private double intakeClawOpenPosition = 0.4, intakeClawClosedPosition = 1.0;
     private int intakeDifferentialStowPosition = 0, intakeDifferentialCollectPosition = 5800, intakeDifferentialPosition = 0, intakeLeftDifferential = 0, intakeRightDifferential = 0;
     private double depositorClawOpenPosition = 0.75, depositorClawClosedPosition = 1.0;
@@ -142,8 +142,8 @@ public class MinibotPatriotRobot {
         depositorRight = (ServoImplEx) engine.hardwareMap.servo.get("depo right");
 
         // CONTINUOUS SERVOS
-        intakeLeftDiff = (CRServoImplEx) engine.hardwareMap.crservo.get("leftDiff");
-        intakeRightDiff = (CRServoImplEx) engine.hardwareMap.crservo.get("rightDiff");
+        intakeLeftDiff = (CRServoImplEx) engine.hardwareMap.crservo.get("leftIntakeDiff");
+        intakeRightDiff = (CRServoImplEx) engine.hardwareMap.crservo.get("rightIntakeDiff");
 
         intakeLeftController = new PIDFController(intakeLeftDiff);
         intakeRightController = new PIDFController(intakeRightDiff);
@@ -350,13 +350,14 @@ public class MinibotPatriotRobot {
     }
 
     public void teardown() {
-
+        // Stop drive wheels
+        drivetrainFieldCentric(0, 0, 0);
     }
 
     public void telemetry() {
         engine.telemetry.addLine("Patriot Robot");
         engine.telemetry.addData("State", "%s", state.name());
-        engine.telemetry.addData("Requested State", "%s", requestedState.name());
+        engine.telemetry.addData("Requested State", "%s", (requestedState == null ? "-"  : requestedState.name()));
         engine.telemetry.addData("Position", "X: %.3f\", Y: %.3f\", H: %.3f°, IMU: %.3f°", position.x, position.y, position.h, Utilities.facing(imu));
         engine.telemetry.addData("Target Position", "X: %.3f\", Y: %.3f\", H: %.3f°", targetPosition.x, targetPosition.y, targetPosition.h);
         engine.telemetry.addLine("");
@@ -377,8 +378,8 @@ public class MinibotPatriotRobot {
         engine.telemetry.addData("Depositor Right", "Position: %.3f", depositorRight.getPosition());
         engine.telemetry.addLine("");
         engine.telemetry.addLine("CONTINUOUS SERVOS");
-        engine.telemetry.addData("Intake Left Diff", "Position: %d, Power: %.3f, Velocity: %.3f", getOctoPosition(OctoEncoder.INTAKE_LEFT_DIFF), intakeLeftDiff.getPower(), getOctoVelocity(OctoEncoder.INTAKE_LEFT_DIFF));
-        engine.telemetry.addData("Intake Right Diff", "Position: %d, Power: %.3f, Velocity: %.3f", getOctoPosition(OctoEncoder.INTAKE_RIGHT_DIFF), intakeRightDiff.getPower(), getOctoVelocity(OctoEncoder.INTAKE_RIGHT_DIFF));
+        engine.telemetry.addData("Intake Left Diff", "Position: %d, Power: %.3f, Velocity: %d", getOctoPosition(OctoEncoder.INTAKE_LEFT_DIFF), intakeLeftDiff.getPower(), getOctoVelocity(OctoEncoder.INTAKE_LEFT_DIFF));
+        engine.telemetry.addData("Intake Right Diff", "Position: %d, Power: %.3f, Velocity: %d", getOctoPosition(OctoEncoder.INTAKE_RIGHT_DIFF), intakeRightDiff.getPower(), getOctoVelocity(OctoEncoder.INTAKE_RIGHT_DIFF));
     }
 
     public int getOctoPosition(OctoEncoder id) {
@@ -672,6 +673,6 @@ public class MinibotPatriotRobot {
         // NOTE: May need to swap position heading and targetPosition heading, my result in inverted angle difference.
         double angleDiff = Utilities.angleDiff(Utilities.facing(position.h), Utilities.facing(targetPosition.h));
 
-        drivetrainFieldCentric(targetVector.y(), targetVector.x(), angleDiff / 180.0);
+        drivetrainFieldCentric(-targetVector.y(), targetVector.x(), angleDiff / 180.0);
     }
 }

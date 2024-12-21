@@ -47,8 +47,6 @@ public class MinibotPatriotTeleOpState extends CyberarmState {
             DPAD UP ACCENT LEVEL THREE
          */
 
-        robot.update();
-
         if (robot.getState() == State.PANIC)
             return;
 
