@@ -17,15 +17,10 @@ public class MinibotPatriotTeleOpEngine extends CyberarmEngine {
             robot = new MinibotPatriotRobot(this, false);
         }
 
-        robot.setTeleOp();
+        robot.setTeleOp(this);
 
         addTask(new MinibotPatriotRobotTask(robot));
 
         addState(new MinibotPatriotTeleOpState(robot, "TeleOp", "00-00"));
-    }
-
-    @Override
-    public void stop() {
-        super.stop();
     }
 }

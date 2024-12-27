@@ -12,6 +12,7 @@ public class MoveToPose2D extends CyberarmState {
 
     private final int timeoutMS;
     private final double targetXInches, targetYInches, targetHeadingDegrees, positionToleranceInches, headingToleranceDegrees;
+    private final boolean usePreciseVelocity;
     public MoveToPose2D(MinibotPatriotRobot robot, String groupName, String actionName) {
         this.robot = robot;
         this.groupName = groupName;
@@ -23,11 +24,14 @@ public class MoveToPose2D extends CyberarmState {
         this.targetHeadingDegrees = robot.config.variable(groupName, actionName, "target_heading_degrees").value();
         this.positionToleranceInches = robot.config.variable(groupName, actionName, "position_tolerance_inches").value();
         this.headingToleranceDegrees = robot.config.variable(groupName, actionName, "heading_tolerance_degrees").value();
+        this.usePreciseVelocity = robot.config.variable(groupName, actionName, "use_precise_velocity").value();
     }
 
     @Override
     public void start() {
         robot.setTargetPosition(new SparkFunOTOS.Pose2D(targetXInches, targetYInches, targetHeadingDegrees));
+
+        robot.isPreciseDrivetrainVelocity = usePreciseVelocity;
     }
 
     @Override

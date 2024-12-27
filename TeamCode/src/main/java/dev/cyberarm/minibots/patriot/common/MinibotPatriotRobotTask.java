@@ -16,7 +16,9 @@ public class MinibotPatriotRobotTask extends CyberarmState {
 
     @Override
     public void telemetry() {
+        engine.telemetry.addLine("+++");
         robot.telemetry();
+        engine.telemetry.addLine("+-+");
     }
 
     @Override

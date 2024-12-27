@@ -19,6 +19,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.timecrafters.TimeCraftersConfigurationTool.library.TimeCraftersConfiguration;
 
 import dev.cyberarm.engine.V2.CyberarmEngine;
+import dev.cyberarm.engine.V2.CyberarmState;
 import dev.cyberarm.engine.V2.Utilities;
 import dev.cyberarm.engine.V2.Vector2D;
 
@@ -76,7 +77,7 @@ public class MinibotPatriotRobot {
     public final IMU imu;
     public TimeCraftersConfiguration config;
     public boolean isPreciseDrivetrainVelocity = false;
-    private final CyberarmEngine engine;
+    private CyberarmEngine engine;
     private boolean isAutonomous;
     private final SparkFunOTOS odometry;
     private final OctoQuad octoquad;
@@ -130,10 +131,10 @@ public class MinibotPatriotRobot {
         leftLift = (DcMotorEx) engine.hardwareMap.dcMotor.get("leftLift");
         rightLift = (DcMotorEx) engine.hardwareMap.dcMotor.get("rightLift");
 
-        frontLeftDrive = (DcMotorEx) engine.hardwareMap.dcMotor.get("fl");
-        frontRightDrive = (DcMotorEx) engine.hardwareMap.dcMotor.get("fr");
-        backRightDrive = (DcMotorEx) engine.hardwareMap.dcMotor.get("br");
-        backLeftDrive = (DcMotorEx) engine.hardwareMap.dcMotor.get("bl");
+        frontLeftDrive = (DcMotorEx) engine.hardwareMap.dcMotor.get("fl"); // fl
+        frontRightDrive = (DcMotorEx) engine.hardwareMap.dcMotor.get("fr"); // fr
+        backRightDrive = (DcMotorEx) engine.hardwareMap.dcMotor.get("br"); // br
+        backLeftDrive = (DcMotorEx) engine.hardwareMap.dcMotor.get("bl"); // bl
 
         // SERVOS
         intakeClaw = (ServoImplEx) engine.hardwareMap.servo.get("theClaw");
@@ -231,8 +232,8 @@ public class MinibotPatriotRobot {
         odometry.setLinearScalar(1.0);
         odometry.setAngularScalar(1.0);
 
-        // Only reset sensor for autonomous
-        if (!isAutonomous) {
+        // Only reset sensor in autonomous
+        if (isAutonomous) {
             odometry.calibrateImu(255, false);
             odometry.resetTracking();
 
@@ -243,7 +244,7 @@ public class MinibotPatriotRobot {
         // IMU
         IMU.Parameters parameters = new IMU.Parameters(
                 new RevHubOrientationOnRobot(
-                        RevHubOrientationOnRobot.LogoFacingDirection.RIGHT,
+                        RevHubOrientationOnRobot.LogoFacingDirection.LEFT,
                         RevHubOrientationOnRobot.UsbFacingDirection.UP));
 
         imu.initialize(parameters);
@@ -406,7 +407,8 @@ public class MinibotPatriotRobot {
         this.odometry.setPosition(position);
     }
 
-    public void setTeleOp() {
+    public void setTeleOp(CyberarmEngine engine) {
+        this.engine = engine;
         this.isAutonomous = false;
     }
 
@@ -668,10 +670,18 @@ public class MinibotPatriotRobot {
         if (!isAutonomous)
             return;
 
-        // NOTE: May need to swap position and targetPosition vectors around, may result in inverted vector.
         Vector2D targetVector = (new Vector2D(position.x, position.y).minus(new Vector2D(targetPosition.x, targetPosition.y)).normalize());
-        // NOTE: May need to swap position heading and targetPosition heading, my result in inverted angle difference.
+        double distanceIN = (new Vector2D(position.x, position.y).distance(new Vector2D(targetPosition.x, targetPosition.y)));
+
         double angleDiff = Utilities.angleDiff(Utilities.facing(position.h), Utilities.facing(targetPosition.h));
+
+        if (Math.abs(distanceIN) <= 24.0 && !isPreciseDrivetrainVelocity) {
+            drivetrainVelocity = (int) Utilities.lerp(drivetrainPreciseVelocity, drivetrainCoarseVelocity, Math.abs(distanceIN) / 24.0);
+        } else if (!isPreciseDrivetrainVelocity) {
+            drivetrainVelocity = drivetrainCoarseVelocity;
+        } else {
+            drivetrainVelocity = drivetrainPreciseVelocity;
+        }
 
         drivetrainFieldCentric(-targetVector.y(), targetVector.x(), angleDiff / 180.0);
     }

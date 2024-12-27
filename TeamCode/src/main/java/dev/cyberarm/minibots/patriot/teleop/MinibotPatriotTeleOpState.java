@@ -55,7 +55,7 @@ public class MinibotPatriotTeleOpState extends CyberarmState {
 
     @Override
     public void telemetry() {
-        robot.telemetry();
+        engine.telemetry.addLine("???");
     }
 
     @Override
