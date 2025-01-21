@@ -47,17 +47,15 @@ public class MinibotPatriotTeleOpState extends CyberarmState {
             DPAD UP ACCENT LEVEL THREE
          */
 
-        robot.update();
-
         if (robot.getState() == State.PANIC)
             return;
 
-        robot.drivetrainRobotCentric(-engine.gamepad1.left_stick_y, engine.gamepad1.left_stick_x, engine.gamepad1.right_stick_x);
+        robot.drivetrainFieldCentric(-engine.gamepad1.left_stick_y, engine.gamepad1.left_stick_x, engine.gamepad1.right_stick_x);
     }
 
     @Override
     public void telemetry() {
-        robot.telemetry();
+        engine.telemetry.addLine("???");
     }
 
     @Override
