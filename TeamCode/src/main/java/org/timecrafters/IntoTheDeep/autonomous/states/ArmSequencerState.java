@@ -44,16 +44,18 @@ public class ArmSequencerState extends CyberarmState {
             }
         }
         if (armPos.equals("Deposit Basket")) {
-            if (robot.depositSlidesInPos
-                    && robot.rightDepositDifInPos
-                    && robot.leftDepositDifInPos) {
-                setHasFinished(true);
+            if (depoOpen){
+                if (robot.depositSlidesInPos && robot.depositTimer){
+                    setHasFinished(true);
+                }
+            } else {
+                if (robot.depositSlidesInPos){
+                    setHasFinished(true);
+                }
             }
         }
         if (robot.rightIntakeDifInPos
                 && robot.leftIntakeDifInPos
-                && robot.rightDepositDifInPos
-                && robot.leftDepositDifInPos
                 && robot.intakeSlidesInPos
                 && robot.depositSlidesInPos) {
 
@@ -77,6 +79,9 @@ public class ArmSequencerState extends CyberarmState {
         engine.telemetry.addData("y pos target", robot.yTarget);
         engine.telemetry.addData("h pos odo", Math.toDegrees(robot.posH));
         engine.telemetry.addData("h pos odo target", Math.toDegrees(robot.hTarget));
+        engine.telemetry.addData("Start Timer", robot.startTimer);
+        engine.telemetry.addData("initial Time", robot.initialTime);
+        engine.telemetry.addData("deposit Timer", robot.depositTimer);
         engine.telemetry.addData("h pos imu", robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES));
         engine.telemetry.addData("leftIntakeDifInPos", robot.leftIntakeDifInPos);
         engine.telemetry.addData("rightIntakeDifInPos", robot.rightIntakeDifInPos);

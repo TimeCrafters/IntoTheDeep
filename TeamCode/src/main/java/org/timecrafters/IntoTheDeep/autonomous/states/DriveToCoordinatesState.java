@@ -48,8 +48,8 @@ public class DriveToCoordinatesState extends CyberarmState {
     @Override
     public void exec() {
 
-        if (Math.abs(robot.posX - robot.xTarget) < 2.5
-                && Math.abs(robot.posY - robot.yTarget) < 2.5
+        if (Math.abs(robot.posX - robot.xTarget) < 0.7
+                && Math.abs(robot.posY - robot.yTarget) < 0.7
                 && Math.abs(robot.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.DEGREES)) - Math.abs(Math.toDegrees(robot.hTarget)) < 1) {
             setHasFinished(true);
         }

@@ -28,13 +28,13 @@ public class Patriot implements Robot {
     private String string;
     private CyberarmEngine engine;
     public DcMotorEx fl, fr, bl, br, intakeExtendo, depositRightExtendo, depositLeftExtendo, winch;
-    public CRServo leftIntakeDiff, rightIntakeDiff, leftDepositDiff, rightDepositDiff;
-    public Servo depoClaw, intakeClaw;
+    public CRServo leftIntakeDiff, rightIntakeDiff;
+    public Servo depoClaw, intakeClaw, leftDepositDiff, rightDepositDiff;
     public SparkFunOTOS otos;
     public final int LEFT_INTAKE_DIFFY = 0;
     public final int RIGHT_INTAKE_DIFFY = 1;
-    public final int RIGHT_DEPOSIT_DIFFY = 2;
-    public final int LEFT_DEPOSIT_DIFFY = 3;
+//    public final int RIGHT_DEPOSIT_DIFFY = 4;
+//    public final int LEFT_DEPOSIT_DIFFY = 5;
     public double leftIntakeDiffyPower;
     public double rightIntakeDiffyPower;
     public double leftDepositDiffyPower;
@@ -51,7 +51,7 @@ public class Patriot implements Robot {
     // ---------------------------------------------------------------------------------------------------- Mechanical positions and limits
     public double depoDefaultPos = 0.04;
     public double depoSpecPos = 1;
-    public double depoBasketPos = 0.6;
+    public double depoBasketPos = 0.75;
     public double IntakeCLOSE = 0.8;
     public double DepoCLOSE = 1;
     public  double IntakeOPEN = 0.4;
@@ -60,7 +60,7 @@ public class Patriot implements Robot {
 
     // Odometry driving Variables
     // -----------------------------------------------------------------------------------------------------------------------------------
-    private double maxVelocity = 2320 * 0.8;
+    private double maxVelocity = 2320 * 0.85;
     public double posX;
     public double posY;
     public double posH;
@@ -73,8 +73,8 @@ public class Patriot implements Robot {
 
     // heading math variables for pid with imu
     public double Hp = 0.7, Hi = 0, Hd = 0;
-    public double Xp = 0.04, Xi = 0, Xd = 0;
-    public double Yp = 0.04, Yi = 0, Yd = 0;
+    public double Xp = 0.05, Xi = 0, Xd = 0;
+    public double Yp = 0.05, Yi = 0, Yd = 0;
     public double pidX;
     public double pidY;
     public double pidH;
@@ -109,7 +109,6 @@ public class Patriot implements Robot {
     // Deposit Extendo Variables
 
     public double depoP = 0.005, depoI = 0, depoD = 0;
-    public boolean depositFlip;
     public double depoLiftIntegralSum = 0;
     private double depoLiftLastError = 0;
     ElapsedTime depoLiftTimer = new ElapsedTime();
@@ -130,9 +129,14 @@ public class Patriot implements Robot {
     public int depositTarget = 0;
     public int leftIntakeDifTarget = 0;
     public int rightIntakeDifTarget = 0;
-
-    public int leftDepositDifTarget = 0;
-    public int rightDepositDifTarget = 0;
+    public double depoLeftBasket = 0.5;
+    public double depoRightBasket = 0.5;
+    public double depoLeftDefault = 0;
+    public double depoRightDefault = 0;
+    public double depoLeftSpec = 0.8;
+    public double depoRightSpec = 0.8;
+    public double leftDepositDifTarget = 0;
+    public double rightDepositDifTarget = 0;
 
     // -------------------------------------------------
     // Autonomous Sequence Variables
@@ -148,6 +152,8 @@ public class Patriot implements Robot {
     public boolean intakeOpen;
     public boolean depoOpen;
     public long initialTime;
+    public boolean depositTimer = false;
+    public int startTimer = 0;
 
 
     public Patriot(String string) {
@@ -170,10 +176,9 @@ public class Patriot implements Robot {
 
         // OCTOQUAD
         octoquad = engine.hardwareMap.get(OctoQuad.class, "octoquad");
+        octoquad.resetAllPositions();
         octoquad.setSingleEncoderDirection(LEFT_INTAKE_DIFFY, OctoQuad.EncoderDirection.FORWARD);
         octoquad.setSingleEncoderDirection(RIGHT_INTAKE_DIFFY, OctoQuad.EncoderDirection.REVERSE);
-        octoquad.setSingleEncoderDirection(LEFT_DEPOSIT_DIFFY, OctoQuad.EncoderDirection.FORWARD);
-        octoquad.setSingleEncoderDirection(RIGHT_DEPOSIT_DIFFY, OctoQuad.EncoderDirection.REVERSE);
 
         //motors configuration
         intakeExtendo = (DcMotorEx) engine.hardwareMap.dcMotor.get("extension");
@@ -218,15 +223,13 @@ public class Patriot implements Robot {
         // CR SERVO'S
         leftIntakeDiff = engine.hardwareMap.crservo.get("leftIntakeDiff");
         rightIntakeDiff = engine.hardwareMap.crservo.get("rightIntakeDiff");
-        leftDepositDiff = engine.hardwareMap.crservo.get("depo left");
-        rightDepositDiff = engine.hardwareMap.crservo.get("depo right");
+        leftDepositDiff = engine.hardwareMap.servo.get("depo left");
+        rightDepositDiff = engine.hardwareMap.servo.get("depo right");
 
         leftIntakeDiff.setDirection(CRServo.Direction.FORWARD);
         rightIntakeDiff.setDirection(CRServo.Direction.REVERSE);
-        leftDepositDiff.setDirection(CRServo.Direction.FORWARD);
-        rightDepositDiff.setDirection(CRServo.Direction.REVERSE);
-
-
+        rightDepositDiff.setDirection(Servo.Direction.FORWARD);
+        leftDepositDiff.setDirection(Servo.Direction.REVERSE);
 
         // TimeCrafters Config
         configuration = new TimeCraftersConfiguration("Patriot");
@@ -332,8 +335,6 @@ public class Patriot implements Robot {
         int[] positions = octoquad.readAllPositions();
         posIntakeLeftDiffy  = positions[LEFT_INTAKE_DIFFY];
         posIntakeRightDiffy = positions[RIGHT_INTAKE_DIFFY];
-        posDepositLeftDiffy  = positions[LEFT_DEPOSIT_DIFFY];
-        posDepositRightDiffy = positions[RIGHT_DEPOSIT_DIFFY];
     }
 
     public void DriveToCoordinates() {
@@ -445,28 +446,13 @@ public class Patriot implements Robot {
         leftIntakeDiff.setPower(BasicPController(leftIntakeDifTarget, posIntakeLeftDiffy, 0.0005, 1));
         rightIntakeDiff.setPower(BasicPController(rightIntakeDifTarget, posIntakeRightDiffy, 0.0005, 1));
 
-        leftDepositDiff.setPower(BasicPController(leftDepositDifTarget, posDepositLeftDiffy, 0.0005, 1));
-        rightDepositDiff.setPower(BasicPController(rightDepositDifTarget, posDepositRightDiffy, 0.0005, 1));
-
-
-        if (posDepositRightDiffy > rightDepositDifTarget - 100 && posDepositRightDiffy < rightDepositDifTarget + 100) {
-            rightDepositDifInPos = true;
-        } else {
-            rightDepositDifInPos = false;
-        }
-
-        if (posDepositLeftDiffy > leftDepositDifTarget - 100 && posDepositLeftDiffy < leftDepositDifTarget + 100) {
-            leftDepositDifInPos = true;
-        } else {
-            leftDepositDifInPos = false;
-        }
-        if (posIntakeRightDiffy > rightIntakeDifTarget - 100 && posIntakeRightDiffy < rightIntakeDifTarget + 100) {
+        if (posIntakeRightDiffy > rightIntakeDifTarget - 150 && posIntakeRightDiffy < rightIntakeDifTarget + 150) {
             rightIntakeDifInPos = true;
         } else {
             rightIntakeDifInPos = false;
         }
 
-        if (posIntakeLeftDiffy > leftIntakeDifTarget - 100 && posIntakeLeftDiffy < leftIntakeDifTarget + 100) {
+        if (posIntakeLeftDiffy > leftIntakeDifTarget - 150 && posIntakeLeftDiffy < leftIntakeDifTarget + 150) {
             leftIntakeDifInPos = true;
         } else {
             leftIntakeDifInPos = false;
@@ -476,10 +462,14 @@ public class Patriot implements Robot {
 
         if (armPos.equals("Default")) {
 
+            leftDepositDiff.setPosition(depoLeftDefault);
+            rightDepositDiff.setPosition(depoRightDefault);
+
             differential = 0;
 
             depositManualControl = false;
             depositTarget = -10;
+
 
             if (intakeExtendo.getCurrentPosition() < 1300){
                 leftIntakeDifTarget = 0;
@@ -515,6 +505,8 @@ public class Patriot implements Robot {
                 }
             }
             differential = 0;
+            leftDepositDiff.setPosition(depoLeftDefault);
+            rightDepositDiff.setPosition(depoRightDefault);
 
             depositManualControl = false;
             intakeTarget = -20;
@@ -541,6 +533,9 @@ public class Patriot implements Robot {
                 }
            }
             differential = 0;
+            leftDepositDiff.setPosition(depoLeftDefault);
+            rightDepositDiff.setPosition(depoRightDefault);
+
 
             depositManualControl = false;
             intakeTarget = 400;
@@ -564,6 +559,9 @@ public class Patriot implements Robot {
                 }
             }
             differential = 0;
+            leftDepositDiff.setPosition(depoLeftSpec);
+            rightDepositDiff.setPosition(depoRightSpec);
+
 
             depositManualControl = true;
             intakeTarget = 400;
@@ -586,6 +584,8 @@ public class Patriot implements Robot {
                 }
             }
             differential = 0;
+            leftDepositDiff.setPosition(depoLeftSpec);
+            rightDepositDiff.setPosition(depoRightSpec);
 
             depositManualControl = true;
             intakeTarget = 400;
@@ -604,7 +604,22 @@ public class Patriot implements Robot {
         }
 
         if (armPos.equals("Deposit Basket")) {
+            leftDepositDiff.setPosition(depoLeftBasket);
+            rightDepositDiff.setPosition(depoRightBasket);
+
+            if (startTimer == 0 && depositSlidesInPos && depoOpen){
+                startTimer += 1;
+                initialTime = System.currentTimeMillis();
+            } else if (startTimer == 1 && System.currentTimeMillis() - initialTime > 1000) {
+                depositTimer = true;
+                startTimer -= 1;
+            } else if (startTimer != 0 && !depositSlidesInPos && !depoOpen){
+                depositTimer = false;
+            }
+
             differential = 0;
+//            leftDepositDiff.setPosition(depoLeftBasket);
+//            rightDepositDiff.setPosition(depoRightBasket);
             if (autonomous){
                 if (depoOpen){
                     depoClaw.setPosition(DepoOPEN);
@@ -624,11 +639,14 @@ public class Patriot implements Robot {
                 depoClaw.setPosition(DepoCLOSE);
             }
 
-            leftDepositDifTarget = -3100;
-            rightDepositDifTarget = -3100;
+            leftDepositDifTarget = -2800;
+            rightDepositDifTarget = -2800;
 
         }
         if (armPos.equals("Intake")) {
+            leftDepositDiff.setPosition(depoLeftDefault);
+            rightDepositDiff.setPosition(depoRightDefault);
+
             if (autonomous) {
                 if (intakeOpen) {
                     intakeClaw.setPosition(IntakeOPEN);

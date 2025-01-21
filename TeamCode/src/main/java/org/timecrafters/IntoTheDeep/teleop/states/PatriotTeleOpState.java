@@ -89,10 +89,8 @@ public class PatriotTeleOpState extends CyberarmState {
             robot.initialTime = System.currentTimeMillis();
         } else if (engine.gamepad2.b) {
             armPos = "Deposit Spec Collecting";
-            robot.depositFlip = false;
         } else if (engine.gamepad2.left_bumper && armPos.equals("Deposit Spec Collecting")) {
             armPos = "Deposit Spec Collected";
-            robot.depositFlip = true;
         } else if (engine.gamepad2.y) {
             armPos = "Deposit Basket";
         } else if (engine.gamepad2.x) {
@@ -118,8 +116,8 @@ public class PatriotTeleOpState extends CyberarmState {
     @Override
     public void init() {
         robot.octoquad.resetAllPositions();
-        robot.intakeExtendo.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
-        robot.intakeExtendo.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
+//        robot.intakeExtendo.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+//        robot.intakeExtendo.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
     }
 
