@@ -27,7 +27,8 @@ public abstract class CyberarmEngine extends OpMode {
 
   public static CyberarmEngine instance;
   //Array To Hold States
-  final private CopyOnWriteArrayList<CyberarmState> cyberarmStates = new CopyOnWriteArrayList<>();
+  final private CopyOnWriteArrayList<CyberarmState> initStates = new CopyOnWriteArrayList<>();
+  final private CopyOnWriteArrayList<CyberarmState> mainStates = new CopyOnWriteArrayList<>();
   // Array to Hold Tasks
   final private CopyOnWriteArrayList<CyberarmState> backgroundTasks = new CopyOnWriteArrayList<>();
   // HashMap to store data for States and Tasks
@@ -42,12 +43,23 @@ public abstract class CyberarmEngine extends OpMode {
   private boolean useThreads = true;
 
   private long startTime;
+  public enum STAGE {
+    IDLE,
+    INIT,
+    INIT_LOOP,
+    START,
+    MAIN_LOOP,
+    STOP
+  }
+  private STAGE stage = STAGE.IDLE;
 
   /**
    * Called when INIT button on Driver Station is pushed
    * ENSURE to call super.init() if you override this method
    */
   public void init() {
+    stage = STAGE.INIT;
+
     CyberarmEngine.instance = this;
     isRunning = false;
     gamepadCheckerGamepad1 = new GamepadChecker(this, gamepad1);
@@ -57,7 +69,11 @@ public abstract class CyberarmEngine extends OpMode {
 
     isRunning = true;
 
-    for (CyberarmState state: cyberarmStates) {
+    for (CyberarmState state: initStates) {
+      initState(state);
+    }
+
+    for (CyberarmState state: mainStates) {
       initState(state);
     }
 
@@ -86,10 +102,15 @@ public abstract class CyberarmEngine extends OpMode {
    * ENSURE to call super.start() if you override this method
    */
   public void start() {
+    // Stop init_loop() states
+    stop();
+
+    stage = STAGE.START;
+
     startTime = System.currentTimeMillis();
 
-    if (cyberarmStates.size() > 0) {
-      runState(cyberarmStates.get(0));
+    if (mainStates.size() > 0) {
+      runState(mainStates.get(0));
     }
 
     // Background tasks
@@ -102,12 +123,28 @@ public abstract class CyberarmEngine extends OpMode {
    * Engine main loop
    * ENSURE to call super.loop() if you override this method
    */
+  public void init_loop() {
+    stage = STAGE.INIT_LOOP;
+
+    execLoopFor(initStates);
+  }
+
+  /**
+   * Engine main loop
+   * ENSURE to call super.loop() if you override this method
+   */
   public void loop() {
+    stage = STAGE.MAIN_LOOP;
+
+    execLoopFor(mainStates);
+  }
+
+  private void execLoopFor(CopyOnWriteArrayList<CyberarmState> states) {
     CyberarmState state;
 
     // Try to set state to the current state, if it fails assume that there are no states to run
     try {
-       state = cyberarmStates.get(activeStateIndex);
+       state = states.get(activeStateIndex);
     } catch(IndexOutOfBoundsException e) {
       // The engine is now out of states.
       stop();
@@ -128,8 +165,8 @@ public abstract class CyberarmEngine extends OpMode {
       // Add telemetry to show currently running state
     telemetry.addLine(
             "Running state: " +state.getClass().getSimpleName() + ". State: " +
-                    (activeStateIndex + 1) + " of " + (cyberarmStates.size()) +
-                    " (" + activeStateIndex + "/" + (cyberarmStates.size() - 1) + ")");
+                    (activeStateIndex + 1) + " of " + (states.size()) +
+                    " (" + activeStateIndex + "/" + (states.size() - 1) + ")");
 
     if (showStateChildrenListInTelemetry && state.hasChildren()) {
       for(CyberarmState child: state.children) {
@@ -142,7 +179,7 @@ public abstract class CyberarmEngine extends OpMode {
       activeStateIndex++;
 
       try {
-        state = cyberarmStates.get(activeStateIndex);
+        state = states.get(activeStateIndex);
         runState(state);
       } catch(IndexOutOfBoundsException e) { /* loop will handle this in a few milliseconds */ }
 
@@ -164,7 +201,19 @@ public abstract class CyberarmEngine extends OpMode {
    */
   @Override
   public void stop() {
-    for (CyberarmState state: cyberarmStates) {
+    final STAGE currentStage = stage;
+
+    if (stage == STAGE.INIT_LOOP) {
+      for (CyberarmState state: initStates) {
+        stopState(state);
+      }
+
+      return;
+    }
+
+    stage = STAGE.STOP;
+
+    for (CyberarmState state: mainStates) {
       stopState(state);
     }
 
@@ -261,7 +310,7 @@ public abstract class CyberarmEngine extends OpMode {
    */
   public CyberarmState addState(CyberarmState state) {
     Log.i(TAG, "Adding cyberarmState "+ state.getClass());
-    cyberarmStates.add(state);
+    mainStates.add(state);
 
     if (isRunning()) { initState(state); }
 
@@ -275,10 +324,10 @@ public abstract class CyberarmEngine extends OpMode {
    * @return CyberarmState
    */
   public CyberarmState insertState(CyberarmState query, CyberarmState state) {
-    int index = cyberarmStates.indexOf(query) + query.insertOffset;
+    int index = mainStates.indexOf(query) + query.insertOffset;
     Log.i(TAG, "Adding cyberarmState "+ state.getClass());
 
-    cyberarmStates.add(index, state);
+    mainStates.add(index, state);
     query.insertOffset++;
 
     if (isRunning()) { initState(state); }
@@ -292,7 +341,7 @@ public abstract class CyberarmEngine extends OpMode {
    * @return CyberarmState
    */
   public CyberarmState addParallelStateToLastState(CyberarmState state) {
-    CyberarmState parentState = cyberarmStates.get(cyberarmStates.size() - 1);
+    CyberarmState parentState = mainStates.get(mainStates.size() - 1);
 
     Log.i(TAG, "Adding parallel cyberarmState "+ state.getClass() + " to parent state " + parentState.getClass());
 
@@ -401,7 +450,7 @@ public abstract class CyberarmEngine extends OpMode {
    */
   protected void buttonDown(Gamepad gamepad, String button) {
     try {
-      buttonDownForStates(cyberarmStates.get(activeStateIndex), gamepad, button);
+      buttonDownForStates(mainStates.get(activeStateIndex), gamepad, button);
     } catch(IndexOutOfBoundsException e){
       /* loop will handle this in a few milliseconds */
     }
@@ -414,7 +463,7 @@ public abstract class CyberarmEngine extends OpMode {
    */
   protected void buttonUp(Gamepad gamepad, String button) {
     try {
-      buttonUpForStates(cyberarmStates.get(activeStateIndex), gamepad, button);
+      buttonUpForStates(mainStates.get(activeStateIndex), gamepad, button);
     } catch(IndexOutOfBoundsException e){
       /* loop will handle this in a few milliseconds */
     }
