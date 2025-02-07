@@ -81,6 +81,12 @@ public abstract class CyberarmEngine extends OpMode {
     for (CyberarmState task : backgroundTasks) {
       initState(task);
     }
+
+    // Start up init_loop's first state
+    activeStateIndex = 0;
+    if (!initStates.isEmpty()) {
+      runState(initStates.get(0));
+    }
   }
 
   /**
@@ -102,14 +108,19 @@ public abstract class CyberarmEngine extends OpMode {
    * ENSURE to call super.start() if you override this method
    */
   public void start() {
-    // Stop init_loop() states
-    stop();
+    // Stop and cleanup init_loop() states
+    for (CyberarmState state: initStates) {
+      stopState(state);
+    }
+    initStates.clear();
 
     stage = STAGE.START;
 
+    // Reset for main loop mainStates array
+    activeStateIndex = 0;
     startTime = System.currentTimeMillis();
 
-    if (mainStates.size() > 0) {
+    if (!mainStates.isEmpty()) {
       runState(mainStates.get(0));
     }
 
@@ -120,8 +131,8 @@ public abstract class CyberarmEngine extends OpMode {
   }
 
   /**
-   * Engine main loop
-   * ENSURE to call super.loop() if you override this method
+   * Engine init loop
+   * ENSURE to call super.init_loop() if you override this method
    */
   public void init_loop() {
     stage = STAGE.INIT_LOOP;
@@ -147,7 +158,6 @@ public abstract class CyberarmEngine extends OpMode {
        state = states.get(activeStateIndex);
     } catch(IndexOutOfBoundsException e) {
       // The engine is now out of states.
-      stop();
 
       telemetry.addLine("" + this.getClass().getSimpleName() + " is out of states to run!");
       telemetry.addLine();
@@ -162,7 +172,7 @@ public abstract class CyberarmEngine extends OpMode {
       }
     }
 
-      // Add telemetry to show currently running state
+    // Add telemetry to show currently running state
     telemetry.addLine(
             "Running state: " +state.getClass().getSimpleName() + ". State: " +
                     (activeStateIndex + 1) + " of " + (states.size()) +
@@ -201,18 +211,14 @@ public abstract class CyberarmEngine extends OpMode {
    */
   @Override
   public void stop() {
-    final STAGE currentStage = stage;
-
-    if (stage == STAGE.INIT_LOOP) {
-      for (CyberarmState state: initStates) {
-        stopState(state);
-      }
-
-      return;
-    }
-
     stage = STAGE.STOP;
 
+    // Init loop states
+    for (CyberarmState state: initStates) {
+      stopState(state);
+    }
+
+    // Main loop states
     for (CyberarmState state: mainStates) {
       stopState(state);
     }
@@ -305,11 +311,24 @@ public abstract class CyberarmEngine extends OpMode {
   }
 
   /**
-   * Add state to queue, will call init() on state if engine is running
+   * Add state to init queue, will call init() on state if engine is running
+   * @param state State to add to queue
+   */
+  public CyberarmState addInitState(CyberarmState state) {
+    Log.i(TAG, "INIT Queue: Adding cyberarmState "+ state.getClass());
+    initStates.add(state);
+
+    if (isRunning()) { initState(state); }
+
+    return state;
+  }
+
+  /**
+   * Add state to main queue, will call init() on state if engine is running
    * @param state State to add to queue
    */
   public CyberarmState addState(CyberarmState state) {
-    Log.i(TAG, "Adding cyberarmState "+ state.getClass());
+    Log.i(TAG, "MAIN Queue: Adding cyberarmState "+ state.getClass());
     mainStates.add(state);
 
     if (isRunning()) { initState(state); }
@@ -318,14 +337,14 @@ public abstract class CyberarmEngine extends OpMode {
   }
 
   /**
-   * Inserts state after the query state plus an offset to ensure logical insertion
+   * Inserts state in main queue after the query state plus an offset to ensure logical insertion
    * @param query State to add state after
    * @param state State to be inserted
    * @return CyberarmState
    */
   public CyberarmState insertState(CyberarmState query, CyberarmState state) {
     int index = mainStates.indexOf(query) + query.insertOffset;
-    Log.i(TAG, "Adding cyberarmState "+ state.getClass());
+    Log.i(TAG, "MAIN Queue: Adding cyberarmState "+ state.getClass());
 
     mainStates.add(index, state);
     query.insertOffset++;
@@ -336,7 +355,7 @@ public abstract class CyberarmEngine extends OpMode {
   }
 
   /**
-   * Adds state to the most recently added top level state as a parallel state
+   * Adds state to the main queue for the most recently added top level state as a parallel state
    * @param state State to add to last top level state
    * @return CyberarmState
    */
@@ -450,7 +469,11 @@ public abstract class CyberarmEngine extends OpMode {
    */
   protected void buttonDown(Gamepad gamepad, String button) {
     try {
-      buttonDownForStates(mainStates.get(activeStateIndex), gamepad, button);
+      if (stage == STAGE.INIT_LOOP) {
+        buttonDownForStates(initStates.get(activeStateIndex), gamepad, button);
+      } else {
+        buttonDownForStates(mainStates.get(activeStateIndex), gamepad, button);
+      }
     } catch(IndexOutOfBoundsException e){
       /* loop will handle this in a few milliseconds */
     }
@@ -463,7 +486,11 @@ public abstract class CyberarmEngine extends OpMode {
    */
   protected void buttonUp(Gamepad gamepad, String button) {
     try {
-      buttonUpForStates(mainStates.get(activeStateIndex), gamepad, button);
+      if (stage == STAGE.INIT_LOOP) {
+        buttonUpForStates(initStates.get(activeStateIndex), gamepad, button);
+      } else {
+        buttonUpForStates(mainStates.get(activeStateIndex), gamepad, button);
+      }
     } catch(IndexOutOfBoundsException e){
       /* loop will handle this in a few milliseconds */
     }
