@@ -622,4 +622,12 @@ public abstract class CyberarmEngine extends OpMode {
   public double runTime() {
     return (System.currentTimeMillis() - startTime);
   }
+
+  /**
+   * The current stage of the engine. See {@link STAGE}
+   * @return stage
+   */
+  public STAGE getStage() {
+    return stage;
+  }
 }
